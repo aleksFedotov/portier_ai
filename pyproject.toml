@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "portier-ai"
+version = "0.1.0"
+description = "Фоновый сервис мини-отеля: опрос IMAP, LLM-классификация писем, уведомления в Telegram"
+requires-python = ">=3.12"
+dependencies = [
+    "google-api-python-client>=2.100",
+    "google-auth-oauthlib>=1.2",
+    "google-auth-httplib2>=0.2",
+    "beautifulsoup4>=4.12",
+    "selectolax>=0.3.21",
+    "openai>=1.40",
+    "pydantic>=2",
+    "pydantic-settings>=2",
+    "sqlalchemy[asyncio]>=2",
+    "aiosqlite>=0.20",
+    "tenacity>=8.2",
+    "aiogram>=3",
+    "natasha>=1.6",
+    "reportlab>=4",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+    "pyyaml>=6",
+    "setuptools<81",  # pymorphy2 (зависимость natasha) требует pkg_resources
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+    "httpx>=0.27",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+portier = ["web_templates/*.html"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

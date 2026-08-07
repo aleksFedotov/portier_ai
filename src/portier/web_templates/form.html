@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>{{ 'Редактирование' if company else 'Новая компания' }} — Portier AI</title>
+  <style>
+    body { font-family: sans-serif; margin: 24px; color: #212529; }
+    label { display: block; margin-top: 12px; font-weight: bold; }
+    input, textarea { width: 480px; padding: 6px; }
+    button { margin-top: 16px; padding: 8px 16px; background: #0d6efd;
+             color: #fff; border: 0; border-radius: 4px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>{{ 'Редактирование компании' if company else 'Новая компания' }}</h1>
+  <form method="post" action="{{ action }}">
+    <label>Название *
+      <input name="name" required value="{{ company.name if company else '' }}">
+    </label>
+    <label>ИНН
+      <input name="inn" value="{{ company.inn if company else '' }}">
+    </label>
+    <label>Реквизиты
+      <textarea name="details" rows="3">{{ company.details if company else '' }}</textarea>
+    </label>
+    <label>Email
+      <input name="email" type="email" value="{{ company.email if company else '' }}">
+    </label>
+    <label>Шаблон темы письма
+      <input name="subject_template"
+             value="{{ company.subject_template if company else '' }}"
+             placeholder="Счёт на оплату проживания">
+    </label>
+    <button type="submit">Сохранить</button>
+  </form>
+  <p><a href="/companies">← К списку</a></p>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Компании — Portier AI</title>
+  <style>
+    body { font-family: sans-serif; margin: 24px; color: #212529; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+    th { background: #343a40; color: #fff; }
+    a.button { display: inline-block; padding: 6px 12px; background: #0d6efd;
+               color: #fff; text-decoration: none; border-radius: 4px; }
+    button.danger { background: #dc3545; color: #fff; border: 0;
+                    padding: 4px 10px; border-radius: 4px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Реестр компаний</h1>
+  <p><a class="button" href="/companies/new">+ Добавить компанию</a></p>
+  <table>
+    <tr><th>Название</th><th>ИНН</th><th>Email</th><th>Шаблон темы</th><th></th></tr>
+    {% for c in companies %}
+    <tr>
+      <td>{{ c.name }}</td>
+      <td>{{ c.inn }}</td>
+      <td>{{ c.email }}</td>
+      <td>{{ c.subject_template }}</td>
+      <td>
+        <a href="/companies/{{ c.id }}/edit">Изменить</a>
+        <form method="post" action="/companies/{{ c.id }}/delete" style="display:inline"
+              onsubmit="return confirm('Удалить компанию «{{ c.name }}»?')">
+          <button class="danger" type="submit">Удалить</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5">Пока нет ни одной компании.</td></tr>
+    {% endfor %}
+  </table>
+</body>
+</html>
