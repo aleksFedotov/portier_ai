@@ -47,8 +47,9 @@ def test_default_rules_do_not_mute_bookings():
     settings = Settings(OPENAI_API_KEY="k")
     assert not is_muted("TravelLine <noreply@travellinemail.com>", "Подтверждение бронирования №1", settings.MUTED_SENDERS)
     assert not is_muted('"Яндекс" <hotels@travel.yandex.ru>', "Реестр бронирований по платежному поручению 1", settings.MUTED_SENDERS)
-    assert not is_muted("info@kuper.ru", "Счёт на оплату в магазине METRO", settings.MUTED_SENDERS)
     assert is_muted("TravelLine <noreply@travellinemail.com>", "Выдана карта лояльности № 1", settings.MUTED_SENDERS)
+    # Купер глушится по умолчанию — его счета перехватывает тикет 10 раньше
+    assert is_muted("info@kuper.ru", "Ваш заказ в магазине Лента", settings.MUTED_SENDERS)
 
 
 # ---------- конвейер ----------
@@ -68,6 +69,7 @@ async def _run_pipeline(monkeypatch, tmp_path, sender, subject):
             "internal_date": 1756710000000,
         }),
         fetch_body_text=AsyncMock(return_value="Текст письма."),
+        fetch_attachments=AsyncMock(return_value=[]),
     )
     bot = AsyncMock()
     settings = Settings(

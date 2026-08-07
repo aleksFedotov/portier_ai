@@ -26,6 +26,26 @@ class Settings(BaseSettings):
     # о документах «для ручной обработки». Если не задан — слать в основной чат.
     OWNER_CHAT_ID: int | None = None
 
+    # Третья группа «входящие счета и важные алерты» (тикет 10).
+    # Fallback: владелец → основной чат.
+    INCOMING_INVOICES_CHAT_ID: int | None = None
+
+    # Важные алерты → третья группа (правила как в MUTED_SENDERS).
+    ALERT_RULES: list[str] = [
+        "support@travelline.ru|возможный овербукинг",
+        "noreply-haps@bronevik.com",
+        "no-reply@gosuslugi.ru",
+        "no-reply@rospotrebnadzor.ru",
+        "notifier@fsa.gov.ru",
+        "nadegda.ivanova88@yandex.ru",
+    ]
+
+    # Исключения из общего правила входящих счетов: их счета идут
+    # лично владельцу, а не в третью группу (у Купера ручная проверка доставки).
+    INVOICE_OWNER_EXCEPTIONS: list[str] = [
+        "info@kuper.ru",
+    ]
+
     # Отправители, о письмах которых уведомляем владельца лично (без LLM):
     # отчёты агентов, реестры Отелло, акты сверки — обрабатываются вручную.
     OWNER_NOTICE_SENDERS: list[str] = [
@@ -63,8 +83,8 @@ class Settings(BaseSettings):
 
     # Чёрный список отправителей (тикет 08): "addr" или "addr|шаблон темы".
     # В .env можно переопределить JSON-массивом.
-    # НЕ глушим (до тикета 10): info@kuper.ru (счета — владельцу),
-    # support@travelline.ru («Возможный овербукинг» — важный алерт).
+    # Перехваты тикета 10 идут РАНЬШЕ глушения: счета Купера и алерт
+    # об овербукинге обрабатываются, остальное от этих адресов — глушится.
     MUTED_SENDERS: list[str] = [
         # реестры/отчёты, которые читаются вручную в ЛК
         "info@notify.comfortbooking.ru",
@@ -96,6 +116,8 @@ class Settings(BaseSettings):
         "hotelier-info@travel.yandex.ru",
         "info@mail.extranet.ostrovok.ru",
         # разовые КП и рассылки
+        "info@kuper.ru",
+        "support@travelline.ru",
         "info@mh78.ru",
         "726309@mail.ru",
         "manager2@okspresso.ru",

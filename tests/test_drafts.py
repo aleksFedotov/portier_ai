@@ -46,6 +46,9 @@ def _settings(tmp_path):
         MUTED_SENDERS=[],
         OWNER_CHAT_ID=None,
         OWNER_NOTICE_SENDERS=[],
+        ALERT_RULES=[],
+        INVOICE_OWNER_EXCEPTIONS=[],
+        INCOMING_INVOICES_CHAT_ID=None,
     )
 
 
@@ -168,6 +171,7 @@ async def _run_pipeline(monkeypatch, tmp_path, result, *, draft_fails=False, com
             "internal_date": 1756710000000,
         }),
         fetch_body_text=AsyncMock(return_value="Просим выставить счёт на проживание."),
+        fetch_attachments=AsyncMock(return_value=[]),
         create_draft=AsyncMock(
             side_effect=RuntimeError("Gmail недоступен") if draft_fails else None,
             return_value="draft-42",

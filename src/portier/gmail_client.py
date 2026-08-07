@@ -19,8 +19,9 @@ from .config import Settings
 from .db import get_session_factory
 from .handlers.router import route_notification
 from .handlers.templates import esc
-from .bot import send_notification
+from .bot import send_document, send_notification
 from .llm import analyze_email
+from .incoming import DOC_SUFFIXES, is_alert, is_invoice_filename
 from .models import EmailStatus, ProcessedEmail
 from .muted import _extract_addr, is_muted
 from .yandex_registry import is_yandex_registry
@@ -31,6 +32,11 @@ logger = logging.getLogger(__name__)
 def _owner_chat(settings: Settings) -> int | None:
     """Личный чат владельца; если не настроен — основной (чтобы ничего не потерять)."""
     return settings.OWNER_CHAT_ID or settings.TELEGRAM_CHAT_ID
+
+
+def _invoices_chat(settings: Settings) -> int | None:
+    """Третья группа «входящие счета и алерты»; fallback: владелец → основной."""
+    return settings.INCOMING_INVOICES_CHAT_ID or _owner_chat(settings)
 
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
@@ -227,9 +233,9 @@ class GmailClient:
         return extract_body_from_payload(msg.get("payload", {}))
 
     async def fetch_attachments(
-        self, gmail_id: str, suffix: str = ".xlsx"
+        self, gmail_id: str, suffix: str | tuple[str, ...] = ".xlsx"
     ) -> list[tuple[str, bytes]]:
-        """Скачать вложения письма с заданным расширением: [(имя файла, байты)]."""
+        """Скачать вложения письма с заданным расширением(ями): [(имя файла, байты)]."""
         service = await self._ensure()
 
         def _get():
@@ -241,10 +247,11 @@ class GmailClient:
             )
 
         msg = await asyncio.to_thread(_get)
+        suffixes = (suffix,) if isinstance(suffix, str) else suffix
         result: list[tuple[str, bytes]] = []
         for part in _walk_parts(msg.get("payload", {})):
             filename = part.get("filename") or ""
-            if not filename.lower().endswith(suffix):
+            if not filename.lower().endswith(suffixes):
                 continue
             att_id = part.get("body", {}).get("attachmentId")
             if not att_id:
@@ -400,6 +407,25 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
         await session.commit()
         await session.refresh(record)
 
+        # Важные алерты (тикет 10): текстовое уведомление в третью группу.
+        # Идёт раньше глушения — овербукинг важнее рассылок TravellLine.
+        if is_alert(record.sender, record.subject, settings.ALERT_RULES):
+            record.email_type = "alert"
+            await send_notification(
+                bot, _invoices_chat(settings),
+                "🚨 <b>Важное уведомление</b>\n\n"
+                f"📧 От: {esc(record.sender)}\n"
+                f"📌 Тема: {esc(record.subject)}",
+            )
+            record.status = EmailStatus.SUCCESS.value
+            await session.commit()
+            return
+
+        # Входящие счета (тикет 10): вложение-счёт → документ в третью группу,
+        # исключения (Купер) — лично владельцу. Тоже раньше глушения.
+        if await _process_incoming_invoice(gmail, bot, settings, gmail_id, record, session):
+            return
+
         # Чёрный список (тикет 08): молча помечаем SKIPPED, LLM не вызываем
         if is_muted(record.sender, record.subject, settings.MUTED_SENDERS):
             logger.info("Письмо %s в чёрном списке (%s) — пропуск", gmail_id, record.sender)
@@ -463,6 +489,43 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
         # если отправка упала, письмо остаётся PENDING и будет обработано повторно
         record.status = EmailStatus.SUCCESS.value
         await session.commit()
+
+
+async def _process_incoming_invoice(
+    gmail: GmailClient, bot, settings: Settings, gmail_id: str, record: ProcessedEmail, session
+) -> bool:
+    """Входящий счёт: вложение-счёт → документ в третью группу (Купер — владельцу).
+
+    Возвращает True, если письмо перехвачено (конвейер дальше не идёт).
+    Шлём все документы письма (счёт + детализация и пр.), если хотя бы одно
+    имя файла похоже на счёт.
+    """
+    try:
+        attachments = await gmail.fetch_attachments(gmail_id, DOC_SUFFIXES)
+    except Exception as exc:
+        logger.exception("Не удалось получить вложения письма %s", gmail_id)
+        record.status = EmailStatus.ERROR.value
+        record.error_log = f"{type(exc).__name__}: {exc}"
+        await session.commit()
+        await _notify_error(bot, settings.TELEGRAM_CHAT_ID, record.sender, record.subject, str(exc))
+        return True
+
+    if not any(is_invoice_filename(name) for name, _ in attachments):
+        return False
+
+    is_exception = _extract_addr(record.sender) in {
+        a.lower() for a in settings.INVOICE_OWNER_EXCEPTIONS
+    }
+    record.email_type = "kuper_invoice" if is_exception else "incoming_invoice"
+    chat_id = _owner_chat(settings) if is_exception else _invoices_chat(settings)
+    caption = f"📧 От: {esc(record.sender)}\n📌 Тема: {esc(record.subject)}"
+
+    for filename, data in attachments:
+        await send_document(bot, chat_id, filename, data, caption=caption)
+
+    record.status = EmailStatus.SUCCESS.value
+    await session.commit()
+    return True
 
 
 async def _process_yandex_registry(

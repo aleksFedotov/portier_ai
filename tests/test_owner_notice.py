@@ -25,6 +25,7 @@ async def _run_pipeline(monkeypatch, tmp_path, sender, subject, **settings_kwarg
             "internal_date": 1756710000000,
         }),
         fetch_body_text=AsyncMock(return_value="Текст письма."),
+        fetch_attachments=AsyncMock(return_value=[]),
     )
     bot = AsyncMock()
     settings = Settings(
@@ -56,7 +57,7 @@ async def test_owner_notice_fallback_to_main_chat(monkeypatch, tmp_path):
     """OWNER_CHAT_ID не задан → уведомление уходит в основной чат."""
     bot, record, _ = await _run_pipeline(
         monkeypatch, tmp_path,
-        "Отелло <otello@2gis.ru>", "Акт сверки",
+        "Отелло <otello@2gis.ru>", "Акт сверки", OWNER_CHAT_ID=None,
     )
     assert record.status == EmailStatus.SUCCESS.value
     args, kwargs = bot.send_message.await_args
@@ -84,6 +85,7 @@ async def test_regular_sender_not_affected(monkeypatch, tmp_path):
             "internal_date": 1756710000000,
         }),
         fetch_body_text=AsyncMock(return_value="Текст письма."),
+        fetch_attachments=AsyncMock(return_value=[]),
     )
     bot = AsyncMock()
     settings = Settings(
