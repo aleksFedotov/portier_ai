@@ -22,6 +22,7 @@ from .handlers.templates import esc
 from .bot import send_notification
 from .llm import analyze_email
 from .models import EmailStatus, ProcessedEmail
+from .muted import is_muted
 from .yandex_registry import is_yandex_registry
 
 logger = logging.getLogger(__name__)
@@ -281,7 +282,7 @@ async def get_last_uid(session) -> int | None:
 
 
 async def is_processed(session, message_id: str) -> bool:
-    """Дедупликация по message_id. Обработанными считаются только SUCCESS/ERROR:
+    """Дедупликация по message_id. Обработанными считаются SUCCESS/ERROR/SKIPPED:
     зависшие PENDING (падение процесса до LLM) обрабатываются повторно.
     Fallback по uid намеренно не используется: uid = internalDate (мс) может
     совпадать у разных писем.
@@ -289,7 +290,9 @@ async def is_processed(session, message_id: str) -> bool:
     result = await session.execute(
         select(ProcessedEmail.id).where(
             ProcessedEmail.message_id == message_id,
-            ProcessedEmail.status.in_([EmailStatus.SUCCESS.value, EmailStatus.ERROR.value]),
+            ProcessedEmail.status.in_([
+                EmailStatus.SUCCESS.value, EmailStatus.ERROR.value, EmailStatus.SKIPPED.value,
+            ]),
         )
     )
     return result.scalar_one_or_none() is not None
@@ -391,6 +394,13 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
         session.add(record)
         await session.commit()
         await session.refresh(record)
+
+        # Чёрный список (тикет 08): молча помечаем SKIPPED, LLM не вызываем
+        if is_muted(record.sender, record.subject, settings.MUTED_SENDERS):
+            logger.info("Письмо %s в чёрном списке (%s) — пропуск", gmail_id, record.sender)
+            record.status = EmailStatus.SKIPPED.value
+            await session.commit()
+            return
 
         # Реестры Яндекс Путешествий — детерминированная обработка без LLM
         if is_yandex_registry(record.sender, record.subject):

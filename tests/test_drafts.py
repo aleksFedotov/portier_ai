@@ -43,6 +43,7 @@ def _settings(tmp_path):
         HOTEL_INN="7701234567",
         HOTEL_DETAILS="р/с 4070281...",
         INVOICES_DIR=str(tmp_path / "invoices"),
+        MUTED_SENDERS=[],
     )
 
 

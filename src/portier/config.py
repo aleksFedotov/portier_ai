@@ -40,6 +40,61 @@ class Settings(BaseSettings):
     # Файл сида компаний (если существует и таблица пуста)
     COMPANIES_SEED_FILE: str = "companies.yaml"
 
+    # Чёрный список отправителей (тикет 08): "addr" или "addr|шаблон темы".
+    # В .env можно переопределить JSON-массивом.
+    # НЕ глушим (до тикета 10): info@kuper.ru (счета — владельцу),
+    # support@travelline.ru («Возможный овербукинг» — важный алерт).
+    MUTED_SENDERS: list[str] = [
+        # реестры/отчёты, которые читаются вручную в ЛК
+        "info@notify.comfortbooking.ru",
+        "noreply@raiffeisen.ru",
+        # TravelLine: только карты лояльности (брони с этого адреса — нужны)
+        "noreply@travellinemail.com|выдана карта лояльности",
+        # служебные уведомления без действий
+        "service@matservice.spb.ru",
+        "extranet@onetwotrip.com",
+        "hotels_info@tbank.ru",
+        # внутренняя переписка
+        "likihotel@gmail.com",
+        "jimmysonfire@gmail.com",
+        # Ozon (включая ответы поддержки — решение от 07.08.2026)
+        "infohotels@ozon.ru",
+        # маркетинг
+        "no-reply@hermitage.ru",
+        "no-reply@account.2gis.com",
+        "business@2gis.ru",
+        "d.minaeva@spb.2gis.ru",
+        "partners-hotel@tutu.ru",
+        "bro@bronevik.com",
+        "attention@hello.delta.ru",
+        "info@e.sutochno.ru",
+        "noreply@travelline.com",
+        "noreply@guest.travelline",
+        "email@business.yandex.ru|статистика за неделю",
+        "hotelier-news@travel.yandex.ru",
+        "hotelier-info@travel.yandex.ru",
+        "info@mail.extranet.ostrovok.ru",
+        # разовые КП и рассылки
+        "info@mh78.ru",
+        "726309@mail.ru",
+        "manager2@okspresso.ru",
+        "roman.orlov@vseinstrumenti.ru",
+        "info@site.hh.ru",
+        "diadoc@kontur.ru",
+        "markirovka@kontur.ru",
+        "accounts@kontur.ru",
+        "info@zoon.ru",
+        "marketing@spectrum.ru",
+        "order@traveldb.io",
+        "office2@ales.spb.ru",
+        "spb@mservice.group",
+        "inform@emails.tinkoff.ru",
+        "noreply@dobrymrktrf.ru",
+        "partner-info@acase.ru",
+        "megakatia1@mail.ru",
+        "hotelpartner@hrs.com",
+    ]
+
 
 def get_settings() -> Settings:
     return Settings()

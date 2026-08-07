@@ -15,6 +15,7 @@ class EmailStatus(str, enum.Enum):
     PENDING = "PENDING"
     SUCCESS = "SUCCESS"
     ERROR = "ERROR"
+    SKIPPED = "SKIPPED"  # чёрный список (тикет 08): не обрабатываем, не шлём
 
 
 class ProcessedEmail(Base):
