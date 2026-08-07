@@ -20,11 +20,12 @@ def _b64(text: str) -> str:
 def test_build_query_backlog():
     query = build_query(None, 7)
     assert query.startswith("after:")
-    assert int(query.split(":")[1]) > 0
+    assert query.endswith(" category:primary")
+    assert int(query.split(":")[1].split()[0]) > 0
 
 
 def test_build_query_cursor():
-    assert build_query(1700000000, 7) == "after:1700000000"
+    assert build_query(1700000000, 7) == "after:1700000000 category:primary"
 
 
 def test_parse_headers():

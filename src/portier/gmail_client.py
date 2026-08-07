@@ -19,8 +19,10 @@ from .config import Settings
 from .db import get_session_factory
 from .handlers.router import route_notification
 from .handlers.templates import esc
+from .bot import send_notification
 from .llm import analyze_email
 from .models import EmailStatus, ProcessedEmail
+from .yandex_registry import is_yandex_registry
 
 logger = logging.getLogger(__name__)
 
@@ -112,12 +114,16 @@ def extract_body_from_payload(payload: dict) -> str:
 
 
 def build_query(after_epoch_seconds: int | None, backlog_days: int) -> str:
-    """Поисковый запрос Gmail: письма после курсора либо за глубину backlog."""
+    """Поисковый запрос Gmail: письма после курсора либо за глубину backlog.
+
+    category:primary — только вкладка «Основные»: промоакции, соцсети,
+    оповещения и форумы пропускаем ещё на стороне Gmail, не тратя запросы к LLM.
+    """
     if after_epoch_seconds is None:
         after_epoch_seconds = int(
             (datetime.now() - timedelta(days=backlog_days)).timestamp()
         )
-    return f"after:{after_epoch_seconds}"
+    return f"after:{after_epoch_seconds} category:primary"
 
 
 class GmailClient:
@@ -213,6 +219,43 @@ class GmailClient:
 
         msg = await asyncio.to_thread(_get)
         return extract_body_from_payload(msg.get("payload", {}))
+
+    async def fetch_attachments(
+        self, gmail_id: str, suffix: str = ".xlsx"
+    ) -> list[tuple[str, bytes]]:
+        """Скачать вложения письма с заданным расширением: [(имя файла, байты)]."""
+        service = await self._ensure()
+
+        def _get():
+            return (
+                service.users()
+                .messages()
+                .get(userId="me", id=gmail_id, format="full")
+                .execute()
+            )
+
+        msg = await asyncio.to_thread(_get)
+        result: list[tuple[str, bytes]] = []
+        for part in _walk_parts(msg.get("payload", {})):
+            filename = part.get("filename") or ""
+            if not filename.lower().endswith(suffix):
+                continue
+            att_id = part.get("body", {}).get("attachmentId")
+            if not att_id:
+                continue
+
+            def _download(att_id=att_id):
+                return (
+                    service.users()
+                    .messages()
+                    .attachments()
+                    .get(userId="me", messageId=gmail_id, id=att_id)
+                    .execute()
+                )
+
+            att = await asyncio.to_thread(_download)
+            result.append((filename, base64.urlsafe_b64decode(att["data"])))
+        return result
 
     async def create_draft(self, raw_message: str) -> str:
         """Создать черновик в Gmail (users.drafts.create), вернуть ID черновика."""
@@ -349,6 +392,11 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
         await session.commit()
         await session.refresh(record)
 
+        # Реестры Яндекс Путешествий — детерминированная обработка без LLM
+        if is_yandex_registry(record.sender, record.subject):
+            await _process_yandex_registry(gmail, bot, settings, gmail_id, record, session)
+            return
+
         try:
             result, mapping = await analyze_body(settings, record.sender, record.subject, body_text)
         except Exception as exc:
@@ -387,6 +435,61 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
         # если отправка упала, письмо остаётся PENDING и будет обработано повторно
         record.status = EmailStatus.SUCCESS.value
         await session.commit()
+
+
+async def _process_yandex_registry(
+    gmail: GmailClient, bot, settings: Settings, gmail_id: str, record: ProcessedEmail, session
+) -> None:
+    """Реестр Яндекс Путешествий: xlsx-вложение → карточка в Telegram. Без LLM.
+
+    Пустой реестр (нет броней) — молча помечаем SUCCESS, уведомление не шлём.
+    """
+    from .yandex_registry import (
+        build_registry_notification,
+        parse_payment_order,
+        parse_registry,
+    )
+
+    record.email_type = "yandex_registry"
+    try:
+        attachments = await gmail.fetch_attachments(gmail_id, ".xlsx")
+        payment_order, payment_date = parse_payment_order(record.subject)
+        reports = [
+            parse_registry(data, payment_order=payment_order, payment_date=payment_date)
+            for _, data in attachments
+        ]
+        bookings = [b for rep in reports for b in rep.bookings]
+    except Exception as exc:
+        logger.exception("Не удалось разобрать реестр по письму %s", gmail_id)
+        record.status = EmailStatus.ERROR.value
+        record.error_log = f"{type(exc).__name__}: {exc}"
+        await session.commit()
+        await _notify_error(bot, settings.TELEGRAM_CHAT_ID, record.sender, record.subject, str(exc))
+        return
+
+    if not bookings:
+        logger.info("Пустой реестр по письму %s — пропуск без уведомления", gmail_id)
+        record.status = EmailStatus.SUCCESS.value
+        await session.commit()
+        return
+
+    report = reports[0]
+    if len(reports) > 1:  # несколько xlsx — объединяем в одну карточку
+        report.bookings = bookings
+        report.commission = sum(rep.commission for rep in reports)
+    record.llm_result = {
+        "payment_order": report.payment_order,
+        "payment_date": report.payment_date,
+        "bookings": [b.__dict__ for b in report.bookings],
+        "total": report.total,
+    }
+    await session.commit()
+
+    await send_notification(
+        bot, settings.TELEGRAM_CHAT_ID, build_registry_notification(report)
+    )
+    record.status = EmailStatus.SUCCESS.value
+    await session.commit()
 
 
 async def _prepare_invoice_note(
