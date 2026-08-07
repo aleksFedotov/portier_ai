@@ -22,6 +22,27 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str | None = None
     TELEGRAM_CHAT_ID: int | None = None
 
+    # Личный чат владельца (тикет 09): выжимки реестров Яндекса и уведомления
+    # о документах «для ручной обработки». Если не задан — слать в основной чат.
+    OWNER_CHAT_ID: int | None = None
+
+    # Отправители, о письмах которых уведомляем владельца лично (без LLM):
+    # отчёты агентов, реестры Отелло, акты сверки — обрабатываются вручную.
+    OWNER_NOTICE_SENDERS: list[str] = [
+        "otello@2gis.ru",
+        "agentsreports@cbtc.ru",
+        "agent@bronevik.com",
+        "anastasiya.ryabinkina@pegast.ru",
+        "e.morozova@hbpro.expert",
+        "buh7@anextour.com",
+        "buh@trivio.ru",
+        "sverka@tutu.ru",
+        "finance@101hotels.com",
+        "hotels_doc@onetwotrip.com",
+        "buh@ozon.travel",
+        "info.russia@lindaily.com",
+    ]
+
     # База данных
     DATABASE_URL: str = "sqlite+aiosqlite:///./data/hotel_bot.db"
 

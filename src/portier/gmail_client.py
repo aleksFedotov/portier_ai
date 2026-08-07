@@ -22,10 +22,15 @@ from .handlers.templates import esc
 from .bot import send_notification
 from .llm import analyze_email
 from .models import EmailStatus, ProcessedEmail
-from .muted import is_muted
+from .muted import _extract_addr, is_muted
 from .yandex_registry import is_yandex_registry
 
 logger = logging.getLogger(__name__)
+
+
+def _owner_chat(settings: Settings) -> int | None:
+    """Личный чат владельца; если не настроен — основной (чтобы ничего не потерять)."""
+    return settings.OWNER_CHAT_ID or settings.TELEGRAM_CHAT_ID
 
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
@@ -402,6 +407,19 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
             await session.commit()
             return
 
+        # Уведомление владельцу о документах «для ручной обработки» (тикет 09)
+        if _extract_addr(record.sender) in {a.lower() for a in settings.OWNER_NOTICE_SENDERS}:
+            record.email_type = "owner_notice"
+            await send_notification(
+                bot, _owner_chat(settings),
+                "📄 <b>Документ для ручной обработки</b>\n\n"
+                f"📧 От: {esc(record.sender)}\n"
+                f"📌 Тема: {esc(record.subject)}",
+            )
+            record.status = EmailStatus.SUCCESS.value
+            await session.commit()
+            return
+
         # Реестры Яндекс Путешествий — детерминированная обработка без LLM
         if is_yandex_registry(record.sender, record.subject):
             await _process_yandex_registry(gmail, bot, settings, gmail_id, record, session)
@@ -496,7 +514,7 @@ async def _process_yandex_registry(
     await session.commit()
 
     await send_notification(
-        bot, settings.TELEGRAM_CHAT_ID, build_registry_notification(report)
+        bot, _owner_chat(settings), build_registry_notification(report)
     )
     record.status = EmailStatus.SUCCESS.value
     await session.commit()
