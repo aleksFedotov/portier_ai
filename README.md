@@ -26,7 +26,7 @@
 3. **Telegram-бот.** Создайте бота через [@BotFather](https://t.me/BotFather), получите токен. Добавьте бота в группу администраторов.
 4. **TELEGRAM_CHAT_ID.** Узнайте ID группы (например, через [@getmyid_bot](https://t.me/getmyid_bot)); у групп он отрицательный, вида `-100...`.
 5. **LLM-провайдер.** По умолчанию DeepSeek (`LLM_PROVIDER=deepseek`): ключ на platform.deepseek.com, из РФ доступен без VPN. Для OpenAI: ключ на platform.openai.com и `LLM_PROVIDER=openai` в `.env`. Ключи можно держать оба — переключение одной строкой.
-6. **Реквизиты отеля.** Заполните `HOTEL_NAME` / `HOTEL_INN` / `HOTEL_DETAILS` — попадут в счета.
+6. **Реквизиты отеля.** Заполните блок `HOTEL_*` (название, ИНН/КПП, адрес, банк, р/с, к/с, БИК) — попадут в счета. Печать и факсимиле — PNG с прозрачным фоном, пути в `INVOICE_STAMP_PATH` / `INVOICE_SIGNATURE_PATH`.
 7. **Конфигурация.** Скопируйте `.env.example` в `.env` и заполните все значения:
    ```bash
    cp .env.example .env

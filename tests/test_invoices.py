@@ -1,24 +1,39 @@
-"""Тесты счетов: схема invoice-блока, генерация PDF, PII на invoice-полях."""
+"""Тесты счетов: схема invoice-блока, модель данных, генерация PDF, PII."""
 
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
 
 from portier.gmail_client import _unmask_result
 from portier.invoices import (
-    build_invoice_lines,
+    amount_in_words,
+    build_invoice_data,
     extract_travelline_id,
+    format_money,
     generate_invoice_pdf,
+    int_in_words,
     invoice_missing_fields,
     invoice_number_from_id,
+    parse_amount,
+    ru_date,
 )
 from portier.schemas import EmailAnalysisResult, InvoiceDetails
 
 
 class _Settings:
-    HOTEL_NAME = "Мини-отель «Тест»"
+    HOTEL_NAME = "ООО «Тест»"
     HOTEL_INN = "7701234567"
-    HOTEL_DETAILS = "р/с 4070281..."
+    HOTEL_KPP = "770101001"
+    HOTEL_ADDRESS = "191014, СПб, ул. Тестовая, д.1"
+    HOTEL_PHONE = "+7 900 000 00 00"
+    HOTEL_EMAIL = "test@example.com"
+    HOTEL_RS = "40702810003000012501"
+    HOTEL_BANK = "Филиал «Тест» АО «Банк»"
+    HOTEL_BIK = "044030723"
+    HOTEL_KS = "30101810100000000723"
+    INVOICE_STAMP_PATH = "нет/такого/файла.png"
+    INVOICE_SIGNATURE_PATH = "нет/такого/файла.png"
 
     def __init__(self, invoices_dir: str):
         self.INVOICES_DIR = invoices_dir
@@ -38,13 +53,15 @@ def test_invoice_block_optional():
 
 def test_invoice_block_fields():
     inv = InvoiceDetails(
-        company_name='ООО «Ромашка»', inn="7712345678", amount="15000 руб.",
+        company_name='ООО «Ромашка»', inn="7712345678", kpp="771201001",
+        legal_address="г. Москва, ул. Полевая, 1", amount="15000 руб.",
         description="Проживание 2 гостей", arrival_date="2026-09-01",
         departure_date="2026-09-05",
     )
     result = _result(invoice=inv)
     assert result.invoice.company_name == 'ООО «Ромашка»'
     assert result.invoice.inn == "7712345678"
+    assert result.invoice.kpp == "771201001"
 
 
 def test_invoice_block_partial():
@@ -68,47 +85,91 @@ def test_extract_travelline_id():
 
 
 def test_invoice_number_from_id():
-    assert invoice_number_from_id("20260815-7348-447005164") == "447005164-1"
+    assert invoice_number_from_id("20260815-7348-447005164") == "447005164-01"
     assert invoice_number_from_id(None) is None
 
 
-def test_invoice_lines_with_internal_id(tmp_path):
-    settings = _Settings(str(tmp_path))
-    inv = InvoiceDetails(company_name='ООО «Ромашка»', amount="15000 руб.")
-    result = _result(invoice=inv, internal_booking_id="20260830-7348-456721519")
-    text = "\n".join(build_invoice_lines(result, settings))
-    assert "СЧЁТ № 456721519-1 от" in text
-    assert "Бронь: 20260830-7348-456721519" in text
+def test_ru_date():
+    assert ru_date("2026-08-15") == "15 августа 2026 г."
+    assert ru_date("2026-01-01") == "1 января 2026 г."
+    assert ru_date(None) == "—"
+    assert ru_date("не дата") == "не дата"
 
 
-def test_invoice_lines_without_internal_id(tmp_path):
-    settings = _Settings(str(tmp_path))
-    text = "\n".join(build_invoice_lines(_result(invoice=None), settings))
-    assert "СЧЁТ НА ОПЛАТУ от" in text
-    assert "Бронь:" not in text
+def test_parse_amount():
+    assert parse_amount("18 140 RUB") == Decimal("18140.00")
+    assert parse_amount("14022") == Decimal("14022.00")
+    assert parse_amount("18870,50") == Decimal("18870.50")
+    assert parse_amount(None) is None
+    assert parse_amount("без цифр") is None
 
 
-def test_invoice_lines_content(tmp_path):
+def test_format_money():
+    assert format_money(Decimal("18870")) == "18 870,00"
+    assert format_money(Decimal("870.5")) == "870,50"
+    assert format_money(None) == "—"
+
+
+def test_int_in_words():
+    assert int_in_words(0) == "ноль"
+    assert int_in_words(21) == "двадцать один"
+    assert int_in_words(1001) == "одна тысяча один"
+    assert int_in_words(22000) == "двадцать две тысячи"
+    assert int_in_words(18870) == "восемнадцать тысяч восемьсот семьдесят"
+
+
+def test_amount_in_words():
+    assert (
+        amount_in_words(Decimal("18870"))
+        == "Восемнадцать тысяч восемьсот семьдесят рублей 00 копеек"
+    )
+    assert amount_in_words(Decimal("1")) == "Один рубль 00 копеек"
+    assert amount_in_words(Decimal("21001.55")) == "Двадцать одна тысяча один рубль 55 копеек"
+    assert amount_in_words(Decimal("22022")) == "Двадцать две тысячи двадцать два рубля 00 копеек"
+    assert amount_in_words(None) == ""
+
+
+def test_invoice_data_full(tmp_path):
     settings = _Settings(str(tmp_path))
     inv = InvoiceDetails(
-        company_name='ООО «Ромашка»', inn="7712345678", amount="15000 руб.",
-        arrival_date="2026-09-01", departure_date="2026-09-05",
+        company_name='ООО «ПЕГАС СПб»', inn="7840483966", kpp="784001001",
+        legal_address="191040, СПб, Пушкинская, 10", amount="18 140 RUB",
+        description="Номер стандарт с завтраком",
+        arrival_date="2026-08-30", departure_date="2026-09-03",
     )
-    text = "\n".join(
-        build_invoice_lines(_result(invoice=inv, booking_number="1208478229"), settings)
+    result = _result(
+        invoice=inv,
+        booking_number="1208478229",
+        internal_booking_id="20260830-7348-456721519",
     )
-    assert "Номер бронирования: 1208478229" in text
-    assert "7701234567" in text  # ИНН отеля
-    assert "7712345678" in text  # ИНН заказчика
-    assert "15000 руб." in text
-    assert "2026-09-01" in text and "2026-09-05" in text
-    assert "М.П." in text
+    data = build_invoice_data(result, settings)
+    assert data.number == "456721519-01"  # из внутреннего TravelLine ID
+    assert data.booking_ref == "1208478229"  # «Бронь:» — номер из «Подтверждение №…»
+    assert data.qty == 4
+    assert data.price == Decimal("4535.00")
+    assert data.amount == Decimal("18140.00")
+    assert "Проживание с 30 августа 2026 г. по 3 сентября 2026 г." in data.item_name
+    assert "Бронь № 1208478229" in data.item_name
+    assert "AUKHADEEV" not in data.item_name  # без ПДн
+    assert data.payer_kpp == "784001001"
+    assert data.supplier_rs == "40702810003000012501"
 
 
-def test_invoice_lines_missing_data_no_crash(tmp_path):
+def test_invoice_data_booking_ref_fallback(tmp_path):
+    """Нет «Подтверждение №» — в «Бронь:» уходит внутренний TravelLine ID."""
     settings = _Settings(str(tmp_path))
-    text = "\n".join(build_invoice_lines(_result(invoice=None), settings))
-    assert "—" in text  # пустые поля заменены прочерком
+    result = _result(invoice=None, internal_booking_id="20260830-7348-456721519")
+    assert build_invoice_data(result, settings).booking_ref == "20260830-7348-456721519"
+
+
+def test_invoice_data_missing_no_crash(tmp_path):
+    settings = _Settings(str(tmp_path))
+    data = build_invoice_data(_result(invoice=None), settings)
+    assert data.number is None
+    assert data.qty is None
+    assert data.amount is None
+    assert data.item_name == "Проживание в отеле"
+    assert format_money(data.amount) == "—"
 
 
 def test_pdf_generated(tmp_path):

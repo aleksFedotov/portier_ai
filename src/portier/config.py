@@ -88,10 +88,22 @@ class Settings(BaseSettings):
     # База данных
     DATABASE_URL: str = "sqlite+aiosqlite:///./data/hotel_bot.db"
 
-    # Реквизиты отеля для счетов
+    # Реквизиты отеля для счетов (тикет 11: полный банковский блок)
     HOTEL_NAME: str = ""
     HOTEL_INN: str = ""
-    HOTEL_DETAILS: str = ""
+    HOTEL_KPP: str = ""
+    HOTEL_ADDRESS: str = ""
+    HOTEL_PHONE: str = ""
+    HOTEL_EMAIL: str = ""
+    HOTEL_RS: str = ""
+    HOTEL_BANK: str = ""
+    HOTEL_BIK: str = ""
+    HOTEL_KS: str = ""
+
+    # Печать и факсимиле, накладываются на счёт сразу (тикет 11, директор разрешил)
+    INVOICE_STAMP_PATH: str = "data/печать 2-Photoroom.png"
+    INVOICE_SIGNATURE_PATH: str = "data/подпись 2-Photoroom.png"
+    INVOICE_LOGO_PATH: str = "data/logo.jpg"
 
     # Каталог для PDF-счетов
     INVOICES_DIR: str = "data/invoices"

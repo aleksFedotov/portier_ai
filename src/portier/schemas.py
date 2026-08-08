@@ -10,6 +10,8 @@ class InvoiceDetails(BaseModel):
 
     company_name: Optional[str] = None
     inn: Optional[str] = None
+    kpp: Optional[str] = None
+    legal_address: Optional[str] = None
     amount: Optional[str] = None
     description: Optional[str] = None
     arrival_date: Optional[str] = None
