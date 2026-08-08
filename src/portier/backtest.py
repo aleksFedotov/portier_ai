@@ -13,10 +13,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from openai import AsyncOpenAI
-
 from .config import get_settings
 from .gmail_client import GmailClient, analyze_body, set_llm_client
+from .llm import create_llm_client
 from .schemas import EmailAnalysisResult
 
 logger = logging.getLogger(__name__)
@@ -31,6 +30,7 @@ _TYPE_COLORS = {
     "payment_received": "#d4edda",
     "payment_failed": "#f5c6cb",
     "review_notification": "#e2e3e5",
+    "booking_confirmed": "#eaf4fb",
     "unknown": "#f0f0f0",
 }
 
@@ -43,6 +43,7 @@ _TYPE_LABELS = {
     "payment_received": "Оплата получена",
     "payment_failed": "Ошибка оплаты",
     "review_notification": "Отзыв",
+    "booking_confirmed": "Новая бронь (молча)",
     "unknown": "Не распознано",
 }
 
@@ -130,7 +131,7 @@ def render_report(rows: list[BacktestRow], days: int) -> str:
 async def run_backtest(days: int, output: str) -> None:
     """Прогнать конвейер по всем письмам за период и записать HTML-отчёт."""
     settings = get_settings()
-    set_llm_client(AsyncOpenAI(api_key=settings.OPENAI_API_KEY))
+    set_llm_client(create_llm_client(settings))
 
     imap = GmailClient(settings)
     await imap.connect()

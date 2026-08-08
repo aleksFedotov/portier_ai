@@ -21,6 +21,7 @@ class EmailAnalysisResult(BaseModel):
 
     type: Literal[
         "booking_comment",
+        "booking_confirmed",
         "guest_message",
         "invoice_required",
         "booking_modified",

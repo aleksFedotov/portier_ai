@@ -4,12 +4,11 @@ import asyncio
 import logging
 import sys
 
-from openai import AsyncOpenAI
-
 from .bot import create_bot, create_dispatcher
 from .config import get_settings
 from .db import init_db, init_engine
 from .gmail_client import GmailAuthError, gmail_loop, set_llm_client
+from .llm import create_llm_client
 
 
 async def main() -> None:
@@ -37,7 +36,7 @@ async def main() -> None:
     if seeded:
         logging.getLogger(__name__).info("Сид компаний: %d записей", seeded)
 
-    set_llm_client(AsyncOpenAI(api_key=settings.OPENAI_API_KEY))
+    set_llm_client(create_llm_client(settings))
 
     bot = create_bot(settings.TELEGRAM_BOT_TOKEN)
     dp = create_dispatcher()

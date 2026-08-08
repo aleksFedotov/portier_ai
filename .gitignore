@@ -9,4 +9,6 @@ __pycache__/
 *.egg-info/
 backtest.log
 report.html
+report_*.html
 unknown_senders.txt
+invocie.pdf

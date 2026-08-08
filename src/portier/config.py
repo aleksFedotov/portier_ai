@@ -14,9 +14,25 @@ class Settings(BaseSettings):
     CHECK_INTERVAL_SECONDS: int = 180
     BACKLOG_DAYS: int = 7
 
+    # LLM-провайдер (тикет 07): "openai" или "deepseek".
+    # Ключи храним оба — переключение одной строкой LLM_PROVIDER.
+    LLM_PROVIDER: str = "openai"
+
     # OpenAI
-    OPENAI_API_KEY: str
+    OPENAI_API_KEY: str | None = None
     OPENAI_MODEL: str = "gpt-4o-mini"
+
+    # DeepSeek (OpenAI-совместимый API, из РФ доступен без VPN)
+    DEEPSEEK_API_KEY: str | None = None
+    DEEPSEEK_MODEL: str = "deepseek-chat"
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
+
+    @property
+    def llm_model(self) -> str:
+        """Модель активного провайдера."""
+        if self.LLM_PROVIDER == "deepseek":
+            return self.DEEPSEEK_MODEL
+        return self.OPENAI_MODEL
 
     # Telegram (обязательны только для боевого режима, не для бэктеста)
     TELEGRAM_BOT_TOKEN: str | None = None
@@ -38,6 +54,11 @@ class Settings(BaseSettings):
         "no-reply@rospotrebnadzor.ru",
         "notifier@fsa.gov.ru",
         "nadegda.ivanova88@yandex.ru",
+        # Биллинг TravelLine (08.08.2026): напоминания и продление подписки — текстом
+        # в третью группу; письма «Счет за TravelLine: Platform» идут через перехват
+        # входящих счетов (документом), поэтому здесь только темы без счетов.
+        "accounting@travelline.ru|проверьте оплату",
+        "accounting@travelline.ru|продление подписки",
     ]
 
     # Исключения из общего правила входящих счетов: их счета идут
@@ -61,6 +82,7 @@ class Settings(BaseSettings):
         "hotels_doc@onetwotrip.com",
         "buh@ozon.travel",
         "info.russia@lindaily.com",
+        "fin50@roomlink.ru",
     ]
 
     # База данных

@@ -357,9 +357,13 @@ async def analyze_body(
     masked_body, _ = mask_pii(body_text, masker)
     masked_sender, _ = mask_pii(sender, masker)
     masked_subject, _ = mask_pii(subject, masker)
+    # getattr: в тестах settings собирается SimpleNamespace-ом без llm_model/LLM_PROVIDER
+    model = getattr(settings, "llm_model", None) or settings.OPENAI_MODEL
+    json_mode = getattr(settings, "LLM_PROVIDER", "openai") == "deepseek"
     result = await analyze_email(
-        _llm_client, settings.OPENAI_MODEL,
+        _llm_client, model,
         sender=masked_sender, subject=masked_subject, body=masked_body,
+        json_mode=json_mode,
     )
     _unmask_result(result, masker.mapping)
     return result, masker.mapping
@@ -465,6 +469,13 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
         record.llm_result = result.model_dump()
         record.pii_map = mapping
         await session.commit()
+
+        # Подтверждение новой брони без комментариев — молча фиксируем в БД,
+        # в Telegram не шлём (решение пользователя 08.08.2026)
+        if result.type == "booking_confirmed":
+            record.status = EmailStatus.SUCCESS.value
+            await session.commit()
+            return
 
         try:
             invoice_note = await _prepare_invoice_note(

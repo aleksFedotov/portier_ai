@@ -25,7 +25,7 @@
    Откроется ссылка авторизации Google — войдите в аккаунт почты отеля и подтвердите доступ (scopes: `gmail.readonly`, `gmail.compose`). Токен сохранится в `data/token.json` и дальше обновляется автоматически; при переносе в Docker достаточно скопировать этот файл (volume `./data`).
 3. **Telegram-бот.** Создайте бота через [@BotFather](https://t.me/BotFather), получите токен. Добавьте бота в группу администраторов.
 4. **TELEGRAM_CHAT_ID.** Узнайте ID группы (например, через [@getmyid_bot](https://t.me/getmyid_bot)); у групп он отрицательный, вида `-100...`.
-5. **OpenAI.** Получите API-ключ на platform.openai.com.
+5. **LLM-провайдер.** По умолчанию DeepSeek (`LLM_PROVIDER=deepseek`): ключ на platform.deepseek.com, из РФ доступен без VPN. Для OpenAI: ключ на platform.openai.com и `LLM_PROVIDER=openai` в `.env`. Ключи можно держать оба — переключение одной строкой.
 6. **Реквизиты отеля.** Заполните `HOTEL_NAME` / `HOTEL_INN` / `HOTEL_DETAILS` — попадут в счета.
 7. **Конфигурация.** Скопируйте `.env.example` в `.env` и заполните все значения:
    ```bash
@@ -82,7 +82,7 @@ python -m portier.backtest --days 45 --output report.html
 - `src/portier/gmail_auth.py` — первичная OAuth-авторизация
 - `src/portier/cleaner.py` — очистка HTML писем
 - `src/portier/pii.py` — маскирование персональных данных
-- `src/portier/llm.py` — классификация через OpenAI
+- `src/portier/llm.py` — классификация через LLM (DeepSeek или OpenAI, выбор — `LLM_PROVIDER`)
 - `src/portier/invoices.py` — генерация PDF-счетов (reportlab)
 - `src/portier/handlers/` — шаблоны сообщений и диспетчер
 - `src/portier/callbacks.py` — обработка кнопок
