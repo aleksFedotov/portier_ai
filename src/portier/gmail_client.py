@@ -38,6 +38,20 @@ def _invoices_chat(settings: Settings) -> int | None:
     """Третья группа «входящие счета и алерты»; fallback: владелец → основной."""
     return settings.INCOMING_INVOICES_CHAT_ID or _owner_chat(settings)
 
+
+# Типы, которые фиксируем в БД без уведомления в Telegram (тикет 15).
+# Исключение — booking_confirmed с комментарием гостя: комментарий нужен
+# администраторам (отдельные письма-комментарии дублируются и молчат).
+SILENT_TYPES = frozenset({
+    "booking_confirmed",
+    "booking_comment",
+    "booking_modified",
+    "booking_cancelled",
+    "payment_received",
+    "review_notification",
+    "unknown",
+})
+
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.compose",
@@ -439,7 +453,9 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
             return
 
         # Уведомление владельцу о документах «для ручной обработки» (тикет 09)
-        if _extract_addr(record.sender) in {a.lower() for a in settings.OWNER_NOTICE_SENDERS}:
+        # и о важных письмах по паре адрес+тема (тикет 15: сверка 101hotels)
+        if _extract_addr(record.sender) in {a.lower() for a in settings.OWNER_NOTICE_SENDERS} \
+                or is_alert(record.sender, record.subject, settings.OWNER_NOTICE_RULES):
             record.email_type = "owner_notice"
             await send_notification(
                 bot, _owner_chat(settings),
@@ -476,9 +492,13 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
         record.pii_map = mapping
         await session.commit()
 
-        # Подтверждение новой брони без комментариев — молча фиксируем в БД,
-        # в Telegram не шлём (решение пользователя 08.08.2026)
-        if result.type == "booking_confirmed":
+        # Молчаливые типы (тикет 15): SUCCESS в БД, в Telegram не шлём.
+        # Подтверждение брони с комментарием гостя — исключение: отдельные
+        # письма-комментарии дублируются (до 3 раз), поэтому комментарий
+        # показываем администраторам из самого подтверждения.
+        if result.type in SILENT_TYPES and not (
+            result.type == "booking_confirmed" and result.comment_details
+        ):
             record.status = EmailStatus.SUCCESS.value
             await session.commit()
             return

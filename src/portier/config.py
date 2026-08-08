@@ -54,11 +54,27 @@ class Settings(BaseSettings):
         "no-reply@rospotrebnadzor.ru",
         "notifier@fsa.gov.ru",
         "nadegda.ivanova88@yandex.ru",
-        # Биллинг TravelLine (08.08.2026): напоминания и продление подписки — текстом
-        # в третью группу; письма «Счет за TravelLine: Platform» идут через перехват
-        # входящих счетов (документом), поэтому здесь только темы без счетов.
-        "accounting@travelline.ru|проверьте оплату",
-        "accounting@travelline.ru|продление подписки",
+        # Расчётный отдел TravelLine (тикет 15): все письма → третья группа;
+        # письма со вложением-счётом перехватываются раньше (тикет 10) документом.
+        "accounting@travelline.ru",
+        # Коды входа в учётные записи (тикет 15) — владелец и гендиректор
+        # должны видеть, что кто-то пытается войти.
+        "info@101hotels.com|код для входа",
+        "noreply@travellinemail.com|вход в учетную запись",
+        "mailer@sender.ozon.ru|подтверждение учетных данных",
+        "noreply@telegram.org",
+        # onetwotrip глушится целиком (MUTED_SENDERS), но алерты идут раньше
+        # глушения — коды входа из экстранета не потеряются.
+        "extranet@onetwotrip.com|код",
+    ]
+
+    # Важные письма лично владельцу (тикет 15): правила «addr|шаблон темы»,
+    # как в ALERT_RULES. Отличается от OWNER_NOTICE_SENDERS тем, что матчит
+    # пару адрес+тема (101hotels шлёт и брони, и сверки с одного адреса).
+    # «cверк» с латинской c — реальная опечатка в темах 101hotels.
+    OWNER_NOTICE_RULES: list[str] = [
+        "info@101hotels.com|сверк",
+        "info@101hotels.com|cверк",
     ]
 
     # Исключения из общего правила входящих счетов: их счета идут

@@ -46,6 +46,7 @@ def _settings(tmp_path):
         MUTED_SENDERS=[],
         OWNER_CHAT_ID=None,
         OWNER_NOTICE_SENDERS=[],
+        OWNER_NOTICE_RULES=[],
         ALERT_RULES=[],
         INVOICE_OWNER_EXCEPTIONS=[],
         INCOMING_INVOICES_CHAT_ID=None,

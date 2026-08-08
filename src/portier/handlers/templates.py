@@ -51,7 +51,9 @@ def build_notification(
     r = result
     t = r.type
 
-    if t == "booking_comment":
+    if t == "booking_comment" or (t == "booking_confirmed" and r.comment_details):
+        # booking_confirmed с комментарием гостя показываем как комментарий
+        # (тикет 15): отдельные письма-комментарии дублируются и молчат.
         text = (
             f"🔔 <b>Комментарий к брони №{esc(r.booking_number)}</b>\n\n"
             f"👤 Гость: {esc(r.guest_name)}\n"
