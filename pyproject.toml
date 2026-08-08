@@ -20,6 +20,7 @@ dependencies = [
     "aiosqlite>=0.20",
     "tenacity>=8.2",
     "aiogram>=3",
+    "aiohttp-socks>=0.10",  # прокси для Telegram-сессии (тикет 16)
     "natasha>=1.6",
     "reportlab>=4",
     "openpyxl>=3.1",

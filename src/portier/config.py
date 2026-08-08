@@ -38,6 +38,14 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str | None = None
     TELEGRAM_CHAT_ID: int | None = None
 
+    # Устойчивость к замедлению Telegram (тикет 16). Прокси нужен, только
+    # если туннель нельзя поднять на уровне сервера: http://user:pass@host:port
+    # или socks5://host:port. Пусто — прямое соединение.
+    TELEGRAM_PROXY: str | None = None
+    TELEGRAM_TIMEOUT: float = 60.0
+    TELEGRAM_RETRY_ATTEMPTS: int = 4
+    TELEGRAM_RETRY_BASE_DELAY: float = 2.0
+
     # Личный чат владельца (тикет 09): выжимки реестров Яндекса и уведомления
     # о документах «для ручной обработки». Если не задан — слать в основной чат.
     OWNER_CHAT_ID: int | None = None

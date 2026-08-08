@@ -4,7 +4,7 @@ import asyncio
 import logging
 import sys
 
-from .bot import create_bot, create_dispatcher
+from .bot import create_bot, create_dispatcher, polling_with_restart
 from .config import get_settings
 from .db import init_db, init_engine
 from .gmail_client import GmailAuthError, gmail_loop, set_llm_client
@@ -38,7 +38,13 @@ async def main() -> None:
 
     set_llm_client(create_llm_client(settings))
 
-    bot = create_bot(settings.TELEGRAM_BOT_TOKEN)
+    bot = create_bot(
+        settings.TELEGRAM_BOT_TOKEN,
+        proxy=settings.TELEGRAM_PROXY,
+        timeout=settings.TELEGRAM_TIMEOUT,
+        retry_attempts=settings.TELEGRAM_RETRY_ATTEMPTS,
+        retry_base_delay=settings.TELEGRAM_RETRY_BASE_DELAY,
+    )
     dp = create_dispatcher()
 
     import uvicorn
@@ -55,7 +61,7 @@ async def main() -> None:
     try:
         await asyncio.gather(
             gmail_loop(settings, bot),
-            dp.start_polling(bot),
+            polling_with_restart(dp, bot),
             web_server.serve(),
         )
     except GmailAuthError as exc:
