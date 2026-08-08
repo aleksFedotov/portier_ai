@@ -7,8 +7,10 @@ import pytest
 from portier.gmail_client import _unmask_result
 from portier.invoices import (
     build_invoice_lines,
+    extract_travelline_id,
     generate_invoice_pdf,
     invoice_missing_fields,
+    invoice_number_from_id,
 )
 from portier.schemas import EmailAnalysisResult, InvoiceDetails
 
@@ -57,13 +59,45 @@ def test_missing_fields_detection():
     assert invoice_missing_fields(full) == []
 
 
+def test_extract_travelline_id():
+    body = "Подтверждение бронирования \nID 20260830-7348-456721519\nTRAVELLINE"
+    assert extract_travelline_id(body) == "20260830-7348-456721519"
+    # без префикса ID — fallback на голый паттерн
+    assert extract_travelline_id("бронь 20260815-7348-447005164 ok") == "20260815-7348-447005164"
+    assert extract_travelline_id("нет идентификатора") is None
+
+
+def test_invoice_number_from_id():
+    assert invoice_number_from_id("20260815-7348-447005164") == "447005164-1"
+    assert invoice_number_from_id(None) is None
+
+
+def test_invoice_lines_with_internal_id(tmp_path):
+    settings = _Settings(str(tmp_path))
+    inv = InvoiceDetails(company_name='ООО «Ромашка»', amount="15000 руб.")
+    result = _result(invoice=inv, internal_booking_id="20260830-7348-456721519")
+    text = "\n".join(build_invoice_lines(result, settings))
+    assert "СЧЁТ № 456721519-1 от" in text
+    assert "Бронь: 20260830-7348-456721519" in text
+
+
+def test_invoice_lines_without_internal_id(tmp_path):
+    settings = _Settings(str(tmp_path))
+    text = "\n".join(build_invoice_lines(_result(invoice=None), settings))
+    assert "СЧЁТ НА ОПЛАТУ от" in text
+    assert "Бронь:" not in text
+
+
 def test_invoice_lines_content(tmp_path):
     settings = _Settings(str(tmp_path))
     inv = InvoiceDetails(
         company_name='ООО «Ромашка»', inn="7712345678", amount="15000 руб.",
         arrival_date="2026-09-01", departure_date="2026-09-05",
     )
-    text = "\n".join(build_invoice_lines(_result(invoice=inv), settings))
+    text = "\n".join(
+        build_invoice_lines(_result(invoice=inv, booking_number="1208478229"), settings)
+    )
+    assert "Номер бронирования: 1208478229" in text
     assert "7701234567" in text  # ИНН отеля
     assert "7712345678" in text  # ИНН заказчика
     assert "15000 руб." in text

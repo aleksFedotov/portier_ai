@@ -24,6 +24,26 @@ _FONT_CANDIDATES = [
 _FONT_NAME = "Helvetica"  # fallback без кириллицы
 _font_registered = False
 
+# Внутренний ID TravelLine в теле письма: «Подтверждение бронирования\nID 20260830-7348-456721519»
+_TL_ID_RE = re.compile(r"ID\s*(\d{8}-\d{4}-\d{9})")
+_TL_ID_FALLBACK_RE = re.compile(r"\b(\d{8}-\d{4}-\d{9})\b")
+
+
+def extract_travelline_id(body: str) -> str | None:
+    """Внутренний ID брони TravelLine из тела письма (детерминированно, без LLM)."""
+    m = _TL_ID_RE.search(body) or _TL_ID_FALLBACK_RE.search(body)
+    return m.group(1) if m else None
+
+
+def invoice_number_from_id(internal_id: str | None) -> str | None:
+    """Номер счёта: последняя часть ID + порядковый суффикс (обычно 1).
+
+    «Бронь: 20260815-7348-447005164» → «447005164-1».
+    """
+    if not internal_id:
+        return None
+    return f"{internal_id.rsplit('-', 1)[-1]}-1"
+
 
 def _register_font() -> str:
     """Зарегистрировать первый доступный Unicode-шрифт, вернуть его имя."""
@@ -60,8 +80,14 @@ def build_invoice_lines(result: EmailAnalysisResult, settings: Settings) -> list
     """Текстовые строки счёта (источник истины для содержимого PDF)."""
     inv = result.invoice or InvoiceDetails()
     dash = "—"
+    today = datetime.now().strftime("%d.%m.%Y")
+    inv_no = invoice_number_from_id(result.internal_booking_id)
     lines = [
-        f"СЧЁТ НА ОПЛАТУ от {datetime.now().strftime('%d.%m.%Y')}",
+        f"СЧЁТ № {inv_no} от {today}" if inv_no else f"СЧЁТ НА ОПЛАТУ от {today}",
+    ]
+    if result.internal_booking_id:
+        lines.append(f"Бронь: {result.internal_booking_id}")
+    lines += [
         "",
         f"Поставщик: {settings.HOTEL_NAME or dash}",
         f"ИНН поставщика: {settings.HOTEL_INN or dash}",
@@ -76,6 +102,7 @@ def build_invoice_lines(result: EmailAnalysisResult, settings: Settings) -> list
         f"Описание: {inv.description or result.comment_details or 'Проживание в отеле'}",
         f"Период проживания: {inv.arrival_date or result.arrival_date or dash} — "
         f"{inv.departure_date or result.departure_date or dash}",
+        f"Номер бронирования: {result.booking_number or dash}",
         f"Сумма к оплате: {inv.amount or dash}",
         "",
         "",

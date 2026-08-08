@@ -150,7 +150,7 @@ def test_build_draft_mime(tmp_path):
 
 # ---------- сквозной сценарий ----------
 
-async def _run_pipeline(monkeypatch, tmp_path, result, *, draft_fails=False, companies=()):
+async def _run_pipeline(monkeypatch, tmp_path, result, *, send_document_fails=False, companies=()):
     """Прогнать process_email на моках, вернуть (gmail_mock, bot_mock)."""
     init_engine("sqlite+aiosqlite:///:memory:")
     await init_db()
@@ -172,12 +172,11 @@ async def _run_pipeline(monkeypatch, tmp_path, result, *, draft_fails=False, com
         }),
         fetch_body_text=AsyncMock(return_value="Просим выставить счёт на проживание."),
         fetch_attachments=AsyncMock(return_value=[]),
-        create_draft=AsyncMock(
-            side_effect=RuntimeError("Gmail недоступен") if draft_fails else None,
-            return_value="draft-42",
-        ),
+        create_draft=AsyncMock(return_value="draft-42"),
     )
     bot = AsyncMock()
+    if send_document_fails:
+        bot.send_document.side_effect = RuntimeError("Telegram недоступен")
     await gmail_client.process_email(gmail, bot, _settings(tmp_path), "gmail-id-1")
     return gmail, bot
 
@@ -202,13 +201,14 @@ async def test_invoice_pipeline_happy_path(monkeypatch, tmp_path):
         monkeypatch, tmp_path, result, companies=[company]
     )
 
-    # Черновик создан с данными реестра
-    gmail.create_draft.assert_awaited_once()
-    msg = _parse_mime(gmail.create_draft.await_args.args[0])
-    assert msg["To"] == "buh@romashka.ru"
-    assert msg["Subject"] == "Счёт за проживание в отеле"
-    attachments = [p for p in msg.iter_parts() if p.get_content_type() == "application/pdf"]
-    assert attachments, "в черновике нет PDF-вложения"
+    # Черновики отключены (08.08.2026): create_draft НЕ вызывается,
+    # PDF уходит документом в общий чат
+    gmail.create_draft.assert_not_awaited()
+    bot.send_document.assert_awaited_once()
+    doc_kwargs = bot.send_document.await_args.kwargs
+    assert doc_kwargs["chat_id"] == -100123
+    assert doc_kwargs["document"].filename.endswith(".pdf")
+    assert "buh@romashka.ru" in doc_kwargs["caption"]
 
     # PDF лежит в INVOICES_DIR
     pdfs = list((tmp_path / "invoices").glob("*.pdf"))
@@ -217,7 +217,7 @@ async def test_invoice_pipeline_happy_path(monkeypatch, tmp_path):
     # Telegram-уведомление
     bot.send_message.assert_awaited_once()
     text = bot.send_message.await_args.kwargs["text"]
-    assert "Черновик счёта готов" in text
+    assert "Счёт готов" in text
     assert "buh@romashka.ru" in text
     assert "Новая компания" not in text
     buttons = bot.send_message.await_args.kwargs["reply_markup"]
@@ -233,24 +233,24 @@ async def test_invoice_pipeline_unknown_company(monkeypatch, tmp_path):
     result = _invoice_result(company_name="ООО «Новое»", amount="9000 руб.")
     gmail, bot = await _run_pipeline(monkeypatch, tmp_path, result)
 
-    # Черновик всё равно создан: адресат — отправитель, тема — дефолт
-    gmail.create_draft.assert_awaited_once()
-    msg = _parse_mime(gmail.create_draft.await_args.args[0])
-    assert msg["To"] == "buh@romashka.ru"
-    assert msg["Subject"] == DEFAULT_SUBJECT
+    # Черновик не создаётся; PDF всё равно уходит в чат (адресат — отправитель)
+    gmail.create_draft.assert_not_awaited()
+    bot.send_document.assert_awaited_once()
+    assert "buh@romashka.ru" in bot.send_document.await_args.kwargs["caption"]
 
     text = bot.send_message.await_args.kwargs["text"]
     assert "Новая компания — добавьте в реестр" in text
 
 
-async def test_invoice_pipeline_draft_failure(monkeypatch, tmp_path):
+async def test_invoice_pipeline_send_document_failure(monkeypatch, tmp_path):
+    """Сбой отправки PDF в чат: письмо помечается ERROR, админу уходит ⚠️."""
     result = _invoice_result(company_name="ООО «Сбой»", amount="1000")
-    gmail, bot = await _run_pipeline(monkeypatch, tmp_path, result, draft_fails=True)
+    gmail, bot = await _run_pipeline(
+        monkeypatch, tmp_path, result, send_document_fails=True
+    )
 
-    # Обработка не упала, письмо помечено ERROR, админу ушло ⚠️
     record = await _get_record()
     assert record.status == "ERROR"
-    assert "Gmail недоступен" in record.error_log
 
     bot.send_message.assert_awaited_once()
     text = bot.send_message.await_args.kwargs["text"]

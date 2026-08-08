@@ -37,6 +37,11 @@ class EmailAnalysisResult(BaseModel):
     departure_date: Optional[str] = None
     booking_number: Optional[str] = None
     channel_name: Optional[str] = None
+    internal_booking_id: Optional[str] = Field(
+        default=None,
+        description="Внутренний ID TravelLine (20260830-7348-456721519); "
+        "заполняется кодом из тела письма, не LLM — основа номера счёта",
+    )
     comment_details: Optional[str] = None
     action_required: str = Field(description="Что нужно сделать администратору")
     invoice: Optional[InvoiceDetails] = Field(

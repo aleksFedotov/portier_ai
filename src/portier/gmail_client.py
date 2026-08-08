@@ -41,6 +41,7 @@ def _invoices_chat(settings: Settings) -> int | None:
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.compose",
+    "https://www.googleapis.com/auth/gmail.modify",
 ]
 
 _HEADER_NAMES = ["Message-ID", "From", "Subject", "Date"]
@@ -466,6 +467,11 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
             return
 
         record.email_type = result.type
+        # Внутренний ID TravelLine парсим из тела детерминированно (не через LLM):
+        # из него строится номер счёта
+        from .invoices import extract_travelline_id
+
+        result.internal_booking_id = extract_travelline_id(body_text)
         record.llm_result = result.model_dump()
         record.pii_map = mapping
         await session.commit()
@@ -479,7 +485,7 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
 
         try:
             invoice_note = await _prepare_invoice_note(
-                result, settings, gmail, record.sender, session
+                result, settings, gmail, bot, record.sender, session
             )
         except Exception as exc:
             # Сбой PDF/черновика: ERROR в БД + ⚠️ админу, очередь не останавливается
@@ -595,14 +601,16 @@ async def _process_yandex_registry(
 
 
 async def _prepare_invoice_note(
-    result, settings: Settings, gmail: GmailClient, sender: str, session
+    result, settings: Settings, gmail: GmailClient, bot, sender: str, session
 ) -> str | None:
-    """Для invoice_required: реестр → PDF → черновик в Gmail → текст пометки."""
+    """Для invoice_required: реестр → PDF → файл в общий чат → текст пометки.
+
+    Черновики в Gmail отключены (решение пользователя 08.08.2026): пока счёт
+    только уходит в чат на проверку. Черновики/автоотправка — тикет 12.
+    """
     if result.type != "invoice_required":
         return None
     from .drafts import (
-        build_draft_body,
-        build_draft_mime,
         find_company,
         merge_invoice_data,
     )
@@ -615,14 +623,16 @@ async def _prepare_invoice_note(
     effective = result.model_copy(update={"invoice": data.invoice})
     pdf_path = generate_invoice_pdf(effective, settings)
 
-    raw = build_draft_mime(
-        data.to, data.subject, build_draft_body(data, settings.HOTEL_NAME), pdf_path
+    await send_document(
+        bot,
+        settings.TELEGRAM_CHAT_ID,
+        filename=pdf_path.name,
+        data=pdf_path.read_bytes(),
+        caption=f"📎 Счёт для {data.to} — проверьте перед отправкой",
     )
-    await gmail.create_draft(raw)
 
     notes = [
-        f"✉️ Черновик создан в Gmail (кому: {data.to}) — проверьте и отправьте вручную",
-        f"📎 Счёт: {pdf_path}",
+        f"📎 Счёт (PDF) отправлен выше — проверьте и отправьте вручную на {data.to}",
     ]
     missing = invoice_missing_fields(data.invoice)
     if missing:

@@ -12,3 +12,6 @@ report.html
 report_*.html
 unknown_senders.txt
 invocie.pdf
+# рабочие образцы документов (содержат реквизиты/данные агентов)
+HotelInvoiceData-*.doc
+Работа с агентами.docx
