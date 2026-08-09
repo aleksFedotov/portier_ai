@@ -131,7 +131,17 @@ def parse_headers(payload: dict, internal_date: int | None = None) -> dict:
         "subject": headers.get("subject", ""),
         "date": headers.get("date", ""),
         "internal_date": internal_date,
+        "attachments": _attachment_names(payload),
     }
+
+
+def _attachment_names(payload: dict) -> list[str]:
+    """Имена файлов-вложений из структуры письма (без скачивания содержимого)."""
+    return [
+        part["filename"]
+        for part in _walk_parts(payload)
+        if part.get("filename")
+    ]
 
 
 def _decode_part(part: dict) -> str | None:
@@ -633,11 +643,23 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
             if result.type == "invoice_required"
             else settings.TELEGRAM_CHAT_ID
         )
-        await route_notification(
+        message = await route_notification(
             bot, chat_id, result,
             email_id=record.id, sender=record.sender, subject=record.subject,
             body_text=body_text, invoice_note=invoice_note,
         )
+
+        # Тикет 18: запоминаем карточку счёта, чтобы удалить её после закрытия.
+        # Только когда настроен отдельный чат счетов — в основном чате
+        # карточки не удаляем.
+        message_id = getattr(message, "message_id", None)
+        if (
+            result.type == "invoice_required"
+            and getattr(settings, "INVOICE_CHAT_ID", None) is not None
+            and isinstance(message_id, int)
+        ):
+            record.invoice_message_id = message_id
+            record.invoice_chat_id = chat_id
 
         # SUCCESS ставим только после успешной отправки в Telegram:
         # если отправка упала, письмо остаётся PENDING и будет обработано повторно
