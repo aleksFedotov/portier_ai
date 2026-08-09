@@ -179,6 +179,20 @@ def build_query(after_epoch_seconds: int | None, backlog_days: int) -> str:
     return f"after:{after_epoch_seconds} category:primary -label:{PROCESSED_LABEL}"
 
 
+def in_quiet_hours(now: datetime, start: int, end: int) -> bool:
+    """Тихие часы (тикет 17): окно [start, end) по локальному времени.
+
+    Окно через полночь (23 → 7): тихо, если час >= start ИЛИ < end.
+    start == end — режим выключен.
+    """
+    if start == end:
+        return False
+    hour = now.hour
+    if start < end:  # дневное окно, напр. 12–18
+        return start <= hour < end
+    return hour >= start or hour < end
+
+
 class GmailClient:
     """Тонкая обёртка над Gmail API (sync SDK гоняется через asyncio.to_thread)."""
 
@@ -832,7 +846,17 @@ async def gmail_loop(settings: Settings, bot) -> None:
     await gmail.connect()  # GmailAuthError всплывёт на старте с инструкцией
     while True:
         try:
-            await check_once(gmail, bot, settings)
+            if in_quiet_hours(
+                datetime.now(), settings.QUIET_HOURS_START, settings.QUIET_HOURS_END
+            ):
+                # Тикет 17: ночью не опрашиваем — письма остаются без метки
+                # и обработаются утром первым же циклом после конца окна
+                logger.info(
+                    "Тихие часы (%02d:00–%02d:00) — опрос пропущен",
+                    settings.QUIET_HOURS_START, settings.QUIET_HOURS_END,
+                )
+            else:
+                await check_once(gmail, bot, settings)
         except GmailAuthError:
             # Токен протух/отозван посреди работы — почтовый цикл останавливаем,
             # сервис продолжит отвечать в Telegram, в логе будет инструкция

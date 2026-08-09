@@ -14,6 +14,12 @@ class Settings(BaseSettings):
     CHECK_INTERVAL_SECONDS: int = 180
     BACKLOG_DAYS: int = 7
 
+    # Тихие часы (тикет 17): в окне [START, END) почта не опрашивается —
+    # ночью ничего не приходит в Telegram, утром обрабатывается накопившееся.
+    # Локальное время сервера. Одинаковые значения (напр. 0 и 0) — режим выкл.
+    QUIET_HOURS_START: int = 23
+    QUIET_HOURS_END: int = 7
+
     # LLM-провайдер (тикет 07): "openai" или "deepseek".
     # Ключи храним оба — переключение одной строкой LLM_PROVIDER.
     LLM_PROVIDER: str = "openai"

@@ -149,3 +149,26 @@ async def test_check_once_label_failure_does_not_stop_queue(_db, monkeypatch):
 
     assert seen == ["g-1", "g-2"]
     assert gmail.mark_processed.call_count == 2
+
+
+# --- Тикет 17: тихие часы ---
+
+from datetime import datetime as _dt
+
+from portier.gmail_client import in_quiet_hours
+
+
+def test_quiet_hours_overnight_window():
+    assert in_quiet_hours(_dt(2026, 8, 9, 23, 0), 23, 7) is True
+    assert in_quiet_hours(_dt(2026, 8, 9, 3, 30), 23, 7) is True
+    assert in_quiet_hours(_dt(2026, 8, 9, 6, 59), 23, 7) is True
+    assert in_quiet_hours(_dt(2026, 8, 9, 7, 0), 23, 7) is False
+    assert in_quiet_hours(_dt(2026, 8, 9, 22, 59), 23, 7) is False
+    assert in_quiet_hours(_dt(2026, 8, 9, 12, 0), 23, 7) is False
+
+
+def test_quiet_hours_day_window_and_disabled():
+    assert in_quiet_hours(_dt(2026, 8, 9, 15, 0), 12, 18) is True
+    assert in_quiet_hours(_dt(2026, 8, 9, 9, 0), 12, 18) is False
+    # start == end — режим выключен, всегда False
+    assert in_quiet_hours(_dt(2026, 8, 9, 3, 0), 0, 0) is False
