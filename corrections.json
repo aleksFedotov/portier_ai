@@ -1,0 +1,1559 @@
+[
+ {
+  "gmail_id": "19f02d46d5a489be",
+  "date": "26 Jun 2026 10:28:15 +0300",
+  "sender": "\"Дельта - Системы безопасности\" <cc@delta.ru>",
+  "subject": "Пополните счет и оставайтесь под защитой DELTA",
+  "current_type": "unknown",
+  "expected_type": "incoming_invoice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f11c6797a04100",
+  "date": "29 Jun 2026 08:07:26 +0300",
+  "sender": "accounting@travelline.ru",
+  "subject": "Проверьте оплату подписок TravelLine: Platform по договору L1005903",
+  "current_type": "unknown",
+  "expected_type": "incoming_invoice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f18015647a2979",
+  "date": "Tue, 30 Jun 2026 13:09:27 +0300",
+  "sender": "\"СмартСофт\" <smartsoft.spb@yandex.ru>",
+  "subject": "Счёт на продление договора с ККТ",
+  "current_type": "unknown",
+  "expected_type": "incoming_invoice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f1c86ea1196ba2",
+  "date": "Wed, 01 Jul 2026 07:13:51 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@info.mail.emergingtravel.com>",
+  "subject": "Сверка началась",
+  "current_type": "unknown",
+  "expected_type": "owner_notice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f17dee4f45ae13",
+  "date": "Tue, 30 Jun 2026 09:31:50 +0000",
+  "sender": "noreply <noreply@delta.ru>",
+  "subject": "Пополните баланс на июль 2026",
+  "current_type": "unknown",
+  "expected_type": "incoming_invoice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f1cd34b473b3cc",
+  "date": "Wed, 01 Jul 2026 08:37:16 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@info.mail.emergingtravel.com>",
+  "subject": "Сверка началась",
+  "current_type": "unknown",
+  "expected_type": "owner_notice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f2c9f419f6d338",
+  "date": "4 Jul 2026 13:14:21 +0300",
+  "sender": "accounting@travelline.ru",
+  "subject": "Счет за TravelLine: Platform по договору L1005903",
+  "current_type": "unknown",
+  "expected_type": "incoming_invoice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f3b6f8b0cd8acd",
+  "date": "7 Jul 2026 10:16:11 +0300",
+  "sender": "\"Дельта - Системы безопасности\" <cc@delta.ru>",
+  "subject": "Уведомление о задолженности DELTA",
+  "current_type": "unknown",
+  "expected_type": "incoming_invoice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f43d1b48e5809d",
+  "date": "8 Jul 2026 22:30:05 +0300",
+  "sender": "\"Информирование DELTA\" <informer@delta.ru>",
+  "subject": "Счет на оплату по договору 78-2233-38798 (за охрану)",
+  "current_type": "unknown",
+  "expected_type": "incoming_invoice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f48dec990ab63b",
+  "date": "Fri, 10 Jul 2026 00:53:05 +0300 (MSK)",
+  "sender": "\"Яндекс Путешествия\" <hotels@travel.yandex.ru>",
+  "subject": "Реестр завершенных бронирований для ООО \"ОРОН\" (договор N 826102/20) за июнь 2026 - Яндекс Путешествия",
+  "current_type": "unknown",
+  "expected_type": "owner_notice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f65130b4910d58",
+  "date": "15 Jul 2026 11:13:17 +0300",
+  "sender": "\"Дельта - Системы безопасности\" <cc@delta.ru>",
+  "subject": "Пополните счет и оставайтесь под защитой DELTA",
+  "current_type": "unknown",
+  "expected_type": "incoming_invoice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f65a3a2dcacd0a",
+  "date": "Wed, 15 Jul 2026 11:57:30 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@account.extranet.ostrovok.ru>",
+  "subject": "Код для Экстранета Островка",
+  "current_type": "unknown",
+  "expected_type": "",
+  "comment": "Нужен в новый раздел коды и вход в систему"
+ },
+ {
+  "gmail_id": "19f8920917b875a3",
+  "date": "Wed, 22 Jul 2026 12:20:40 +0300",
+  "sender": "\"info@101hotels.com\" <info@101hotels.com>",
+  "subject": "Код для входа в Extranet",
+  "current_type": "unknown",
+  "expected_type": "",
+  "comment": "Нужен в новый раздел коды и вход в систему"
+ },
+ {
+  "gmail_id": "19f892ca7470ce47",
+  "date": "22 Jul 2026 11:18:06 +0300",
+  "sender": "\"Дельта - Системы безопасности\" <cc@delta.ru>",
+  "subject": "Пополните счет и оставайтесь под защитой DELTA",
+  "current_type": "unknown",
+  "expected_type": "incoming_invoice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f9874afaadfaf4",
+  "date": "Sat, 25 Jul 2026 08:46:51 +0000",
+  "sender": "\"Emergingtravel.com\" <hotels@info.mail.emergingtravel.com>",
+  "subject": "Код для Extranet Emerging Travel Group",
+  "current_type": "unknown",
+  "expected_type": "",
+  "comment": "Нужен в новый раздел коды и вход в систему"
+ },
+ {
+  "gmail_id": "19fa5402890c8db8",
+  "date": "Mon, 27 Jul 2026 23:24:30 +0300",
+  "sender": "\"Кофейная компания Кофеманов\" <kofeman.spb@mail.ru>",
+  "subject": "Счет на кофе 27.07",
+  "current_type": "unknown",
+  "expected_type": "incoming_invoice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fa781621dbb7e7",
+  "date": "28 Jul 2026 09:25:04 +0300",
+  "sender": "\"Дельта - Системы безопасности\" <cc@delta.ru>",
+  "subject": "Пополните счет и оставайтесь под защитой DELTA",
+  "current_type": "unknown",
+  "expected_type": "incoming_invoice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fad0bf09457673",
+  "date": "Wed, 29 Jul 2026 11:45:13 +0300",
+  "sender": "\"COSMI_Екатерина Махова\" <zakaz7@cosmipro.ru>",
+  "subject": "Re: Заказ ООО ОРОН",
+  "current_type": "unknown",
+  "expected_type": "incoming_invoice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fb1c919be9cd9d",
+  "date": "30 Jul 2026 09:26:23 +0300",
+  "sender": "\"Дельта - Системы безопасности\" <cc@delta.ru>",
+  "subject": "Пополните счет и оставайтесь под защитой DELTA",
+  "current_type": "unknown",
+  "expected_type": "incoming_invoice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fcbff0f351c7a1",
+  "date": "Tue,  4 Aug 2026 08:58:38 +0000 (UTC)",
+  "sender": "Telegram <noreply@telegram.org>",
+  "subject": "Ваш код - 403611",
+  "current_type": "unknown",
+  "expected_type": "",
+  "comment": "Нужен в новый раздел коды и вход в систему"
+ },
+ {
+  "gmail_id": "19fcb1cbcfbdec36",
+  "date": "4 Aug 2026 07:51:25 +0300",
+  "sender": "\"Расчетный отдел TravelLine\" <accounting@travelline.ru>",
+  "subject": "Продление подписки на компоненты TravelLine",
+  "current_type": "unknown",
+  "expected_type": "incoming_invoice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fd10285f5293f6",
+  "date": "Wed, 5 Aug 2026 11:20:30 +0300",
+  "sender": "\"info@101hotels.com\" <info@101hotels.com>",
+  "subject": "Код для входа в Extranet",
+  "current_type": "unknown",
+  "expected_type": "",
+  "comment": "Нужен в новый раздел коды и вход в систему"
+ },
+ {
+  "gmail_id": "19fde0fe7aed32ba",
+  "date": "Fri, 07 Aug 2026 21:52:35 +0300",
+  "sender": "Lindaily docs <no-reply@lindaily.novoline.spb.ru>",
+  "subject": "Документы Lindaily для клиента 3315659 ООО ОРОН",
+  "current_type": "unknown",
+  "expected_type": "incoming_invoice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f05bc2962c6e21",
+  "date": "Fri, 26 Jun 2026 21:00:40 +0000",
+  "sender": "\"Островок! Экстранет\" <notification@info.mail.emergingtravel.com>",
+  "subject": "[ВАЖНО] подтвердите бронирование #946983607",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f074db2dd885cd",
+  "date": "27 Jun 2026 07:19:20 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f0882588243bf5",
+  "date": "Sat, 27 Jun 2026 09:56:27 +0000",
+  "sender": "\"HBConnect - Спб\" <o_1631426.spb@v2.hbconnect.ru>",
+  "subject": "Заявка на бронирование #1631426",
+  "current_type": "booking_confirmed",
+  "expected_type": "",
+  "comment": "Нужно в новый раздел требуется обработка администратором "
+ },
+ {
+  "gmail_id": "19f095cf3e234383",
+  "date": "Sat, 27 Jun 2026 13:55:13 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@info.mail.emergingtravel.com>",
+  "subject": "Внесена предоплата по бронированию #591497081",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f0961ab003125a",
+  "date": "Sat, 27 Jun 2026 14:00:22 +0000",
+  "sender": "\"Островок! Экстранет\" <notification@info.mail.emergingtravel.com>",
+  "subject": "[ВАЖНО] подтвердите бронирование #591497081",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f0c9961a534796",
+  "date": "Sun, 28 Jun 2026 05:00:05 +0000",
+  "sender": "Travel assistant <24help@mail.personvip.com>",
+  "subject": "Пожалуйста, подтвердите детали бронирования для Liliia Safronova с 19.07.2026 по 24.07.2026 бронирование № 2f912608-a43f-44ea-8fec-7826c4c864f6",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f1197a1675252b",
+  "date": "29 Jun 2026 07:16:17 +0300",
+  "sender": "\"ЛиКи Лофт Отель I LiKi LOFT HOTEL\" <noreply@travellinemail.com>",
+  "subject": "Незавершенная бронь",
+  "current_type": "booking_confirmed",
+  "expected_type": "",
+  "comment": "Нужно в новый раздел требуется обработка администратором "
+ },
+ {
+  "gmail_id": "19f02866d989c3d4",
+  "date": "Fri, 26 Jun 2026 09:03:05 +0300",
+  "sender": "<hotels_partners@tbank.ru>",
+  "subject": "(Скоро заезд) Бронирование 926765 в отеле ЛиКи Лофт/LiKi Loft (Санкт-Петербург)",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f11f77e313a363",
+  "date": "Mon, 29 Jun 2026 09:00:53 +0300",
+  "sender": "<hotels_partners@tbank.ru>",
+  "subject": "(Скоро заезд) Бронирование 885716 в отеле ЛиКи Лофт/LiKi Loft (Санкт-Петербург)",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f171ee3cfd5447",
+  "date": "Tue, 30 Jun 2026 09:02:03 +0300",
+  "sender": "<hotels_partners@tbank.ru>",
+  "subject": "(Скоро заезд) Бронирование 963591 в отеле ЛиКи Лофт/LiKi Loft (Санкт-Петербург)",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f8869e19b28d4b",
+  "date": "Wed, 22 Jul 2026 09:01:02 +0300",
+  "sender": "<hotels_partners@tbank.ru>",
+  "subject": "(Скоро заезд) Бронирование 1012682 в отеле ЛиКи Лофт/LiKi Loft (Санкт-Петербург)",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f8d90510b8a181",
+  "date": "Thu, 23 Jul 2026 09:01:07 +0300",
+  "sender": "<hotels_partners@tbank.ru>",
+  "subject": "(Скоро заезд) Бронирование 1012167 в отеле ЛиКи Лофт/LiKi Loft (Санкт-Петербург)",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fc635ff37046eb",
+  "date": "Mon, 3 Aug 2026 09:00:43 +0300",
+  "sender": "<hotels_partners@tbank.ru>",
+  "subject": "(Скоро заезд) Бронирование 960785 в отеле ЛиКи Лофт/LiKi Loft (Санкт-Петербург)",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fdad30afa01e28",
+  "date": "Fri, 7 Aug 2026 09:04:44 +0300",
+  "sender": "<hotels_partners@tbank.ru>",
+  "subject": "(Скоро заезд) Бронирование 1088809 в отеле ЛиКи Лофт/LiKi Loft (Санкт-Петербург)",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f16c0b91adbb1e",
+  "date": "30 Jun 2026 07:19:16 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f02385aa965882",
+  "date": "26 Jun 2026 07:37:54 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f26339bdaf5352",
+  "date": "3 Jul 2026 07:19:03 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f35a673a7f2f0e",
+  "date": "6 Jul 2026 07:18:48 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f3ff3cdaf4d8f7",
+  "date": "8 Jul 2026 07:19:29 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f451a19970720f",
+  "date": "9 Jul 2026 07:19:25 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f59b326e41372f",
+  "date": "13 Jul 2026 07:19:00 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f5ed9cdf7a4d48",
+  "date": "14 Jul 2026 07:19:19 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_confirmed",
+  "expected_type": "unknown",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f63fff8b5e688e",
+  "date": "15 Jul 2026 07:19:07 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f6926c5096cd40",
+  "date": "16 Jul 2026 07:19:36 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f7373341067e19",
+  "date": "18 Jul 2026 07:19:17 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f78990c8ec4d4c",
+  "date": "19 Jul 2026 07:18:43 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f880cc8dea97a2",
+  "date": "22 Jul 2026 07:19:26 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f8d32d1415f048",
+  "date": "23 Jul 2026 07:19:04 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f9259683d07759",
+  "date": "24 Jul 2026 07:19:20 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f977f8a415bad7",
+  "date": "25 Jul 2026 07:19:05 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fc0b23ee4bee38",
+  "date": "2 Aug 2026 07:18:54 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fc5d8b6bc9c791",
+  "date": "3 Aug 2026 07:19:01 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fd025b38521856",
+  "date": "5 Aug 2026 07:19:18 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fda7501af7d37d",
+  "date": "7 Aug 2026 07:22:08 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f2023250e67903",
+  "date": "Thu, 02 Jul 2026 00:03:21 +0000",
+  "sender": "\"Островок! Экстранет\" <notification@info.mail.emergingtravel.com>",
+  "subject": "[ВАЖНО] подтвердите бронирование #494284199",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f31b8ffdc68ce3",
+  "date": "Sun, 05 Jul 2026 10:00:31 +0000",
+  "sender": "\"Островок! Экстранет\" <notification@info.mail.emergingtravel.com>",
+  "subject": "[ВАЖНО] подтвердите бронирование #690951789",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f355ee67ef1f04",
+  "date": "Mon, 06 Jul 2026 03:00:38 +0000",
+  "sender": "\"Островок! Экстранет\" <notification@info.mail.emergingtravel.com>",
+  "subject": "[ВАЖНО] подтвердите бронирование #699079814",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f709812777fd8b",
+  "date": "Fri, 17 Jul 2026 15:00:40 +0000",
+  "sender": "\"Островок! Экстранет\" <notification@account.extranet.ostrovok.ru>",
+  "subject": "[ВАЖНО] подтвердите бронирование #24932589",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f875703c0d0012",
+  "date": "Wed, 22 Jul 2026 01:00:49 +0000",
+  "sender": "\"Островок! Экстранет\" <notification@account.extranet.ostrovok.ru>",
+  "subject": "[ВАЖНО] подтвердите бронирование #314045027",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f875788c93e63d",
+  "date": "Wed, 22 Jul 2026 01:01:28 +0000",
+  "sender": "\"Emergingtravel.com\" <notification@info.mail.emergingtravel.com>",
+  "subject": "[ВАЖНО] подтвердите бронирование #314045027",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f98814f9b8c21a",
+  "date": "Sat, 25 Jul 2026 09:00:38 +0000",
+  "sender": "\"Островок! Экстранет\" <notification@account.extranet.ostrovok.ru>",
+  "subject": "[ВАЖНО] подтвердите бронирование #744120877",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f98b803806b84b",
+  "date": "Sat, 25 Jul 2026 10:00:22 +0000",
+  "sender": "\"Островок! Экстранет\" <notification@account.extranet.ostrovok.ru>",
+  "subject": "[ВАЖНО] подтвердите бронирование #319803957",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fc8ffa5d2421b0",
+  "date": "Mon, 3 Aug 2026 19:00:23 +0000",
+  "sender": "\"Островок! Экстранет\" <notification@account.extranet.ostrovok.ru>",
+  "subject": "[ВАЖНО] подтвердите бронирование #108463903",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f23ac0120efe98",
+  "date": "Thu, 02 Jul 2026 11:45:26 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "Напоминаем: завтра приезжают гости",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f322244f8f4b8c",
+  "date": "Sun, 05 Jul 2026 11:44:39 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "Напоминаем: завтра приезжают гости",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f3c8e6da09a82b",
+  "date": "Tue, 07 Jul 2026 11:41:54 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "Напоминаем: завтра приезжают гости",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fc79602bba06d9",
+  "date": "Mon, 03 Aug 2026 11:46:02 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "Напоминаем: завтра приезжают гости",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f31a00dd4e3fc2",
+  "date": "Sun, 05 Jul 2026 09:33:19 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@info.mail.emergingtravel.com>",
+  "subject": "Новое бронирование № #690951789",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19eff2681bd44ee7",
+  "date": "Thu, 25 Jun 2026 14:19:33 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@info.mail.emergingtravel.com>",
+  "subject": "Новое бронирование № #799875805",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f0592cecfe8bfe",
+  "date": "Fri, 26 Jun 2026 20:15:32 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@info.mail.emergingtravel.com>",
+  "subject": "Новое бронирование № #946983607",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f095c4f26b4fb9",
+  "date": "Sat, 27 Jun 2026 13:54:31 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@info.mail.emergingtravel.com>",
+  "subject": "Новое бронирование № #591497081",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f1716f026c134c",
+  "date": "Tue, 30 Jun 2026 05:53:26 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@info.mail.emergingtravel.com>",
+  "subject": "Новое бронирование № #314045027",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f1ffcc9fbbe172",
+  "date": "Wed, 01 Jul 2026 23:21:27 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@info.mail.emergingtravel.com>",
+  "subject": "Новое бронирование № #494284199",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f3be078ca6d341",
+  "date": "Tue, 07 Jul 2026 09:19:53 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@info.mail.emergingtravel.com>",
+  "subject": "Новое бронирование № #144493951",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f65a0c7a06e3e3",
+  "date": "Wed, 15 Jul 2026 11:54:22 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@info.mail.emergingtravel.com>",
+  "subject": "Новое бронирование № #6101757",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f70926806261a1",
+  "date": "Fri, 17 Jul 2026 14:54:30 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@account.extranet.ostrovok.ru>",
+  "subject": "Новое бронирование № #24932589",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f98710f7e1d127",
+  "date": "Sat, 25 Jul 2026 08:42:53 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@account.extranet.ostrovok.ru>",
+  "subject": "Новое бронирование № #744120877",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f98a8dcca27007",
+  "date": "Sat, 25 Jul 2026 09:43:50 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@account.extranet.ostrovok.ru>",
+  "subject": "Новое бронирование № #319803957",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fc8fc21b7b1800",
+  "date": "Mon, 3 Aug 2026 18:56:33 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@account.extranet.ostrovok.ru>",
+  "subject": "Новое бронирование № #108463903",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fdcdccb43034ec",
+  "date": "Fri, 7 Aug 2026 15:34:44 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@account.extranet.ostrovok.ru>",
+  "subject": "Новое бронирование № #787179937",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fdce15d48ed14b",
+  "date": "Fri, 7 Aug 2026 15:39:44 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@account.extranet.ostrovok.ru>",
+  "subject": "Новое бронирование № #85153527",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f3d0410f4beb2b",
+  "date": "Tue, 07 Jul 2026 14:38:23 +0000",
+  "sender": "\"HBConnect - Спб\" <o_1638793.spb@v2.hbconnect.ru>",
+  "subject": "Заявка на бронирование #1638793",
+  "current_type": "booking_confirmed",
+  "expected_type": "",
+  "comment": "Нужно в новый раздел требуется обработка администратором "
+ },
+ {
+  "gmail_id": "19f400f09839e240",
+  "date": "Wed, 08 Jul 2026 04:49:14 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@info.mail.emergingtravel.com>",
+  "subject": "Внесена предоплата по бронированию #144493951",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f4199ac78fb59e",
+  "date": "Wed, 08 Jul 2026 12:00:09 +0000",
+  "sender": "Travel assistant <24help@mail.personvip.com>",
+  "subject": "Пожалуйста, подтвердите детали бронирования для Vladimir Biriukov с 08.07.2026 по 09.07.2026 бронирование № 97c6521a-301e-4ac3-8fa3-5a5408f27320",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f65a180f7ae6b8",
+  "date": "Wed, 15 Jul 2026 11:55:10 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@info.mail.emergingtravel.com>",
+  "subject": "Внесена предоплата по бронированию #6101757",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f059348db8fb8b",
+  "date": "Fri, 26 Jun 2026 20:16:05 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@info.mail.emergingtravel.com>",
+  "subject": "Внесена предоплата по бронированию #946983607",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f98a93c3dfed8c",
+  "date": "Sat, 25 Jul 2026 09:44:15 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@account.extranet.ostrovok.ru>",
+  "subject": "Внесена предоплата по бронированию #319803957",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fdce2b15dbaded",
+  "date": "Fri, 7 Aug 2026 15:41:10 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@account.extranet.ostrovok.ru>",
+  "subject": "Внесена предоплата по бронированию #85153527",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f69d3a2e54ed17",
+  "date": "Thu, 16 Jul 2026 10:28:19 +0300",
+  "sender": "<hotels_partners@tbank.ru>",
+  "subject": "(Повторное уведомление) Бронирование 1012167 в отеле ЛиКи Лофт/LiKi Loft (Санкт-Петербург)",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fa26345dc389dd",
+  "date": "Mon, 27 Jul 2026 10:03:57 +0300",
+  "sender": "<hotels_partners@tbank.ru>",
+  "subject": "(Повторное уведомление) Бронирование 960785 в отеле ЛиКи Лофт/LiKi Loft (Санкт-Петербург)",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f791da9a956e95",
+  "date": "Sun, 19 Jul 2026 06:43:34 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "Гость внес предоплату за бронь",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f7965eaea04844",
+  "date": "Sun, 19 Jul 2026 11:02:29 +0300",
+  "sender": "\"Bronevik.com\" <billing@bronevik.online>",
+  "subject": "Заявка #61412679 на проживание",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f7ef143f6e1f62",
+  "date": "20 Jul 2026 12:52:47 +0300",
+  "sender": "\"ЛиКи Лофт Отель I LiKi LOFT HOTEL\" <noreply@travellinemail.com>",
+  "subject": "Незавершенная бронь",
+  "current_type": "booking_confirmed",
+  "expected_type": "",
+  "comment": "Нужно в новый раздел требуется обработка администратором "
+ },
+ {
+  "gmail_id": "19fc32d9cdece5c4",
+  "date": "Sun, 2 Aug 2026 18:52:53 +0300 (MSK)",
+  "sender": "<e.trifilova@acase.ru>",
+  "subject": "Бронирование 14320999",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fc3475e3b42123",
+  "date": "Sun, 2 Aug 2026 19:21:01 +0300 (MSK)",
+  "sender": "<i.vikhodtseva@acase.ru>",
+  "subject": "Бронирование 14524118",
+  "current_type": "booking_confirmed",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f1c87ae94d000a",
+  "date": "Wed, 01 Jul 2026 10:14:36 +0300",
+  "sender": "\"Купер\" <info@kuper.ru>",
+  "subject": "Счёт на оплату в магазине METRO",
+  "current_type": "muted",
+  "expected_type": "owner_notice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f40b3c954526cd",
+  "date": "Wed, 08 Jul 2026 10:49:04 +0300",
+  "sender": "\"Купер\" <info@kuper.ru>",
+  "subject": "Счёт на оплату в магазине METRO",
+  "current_type": "muted",
+  "expected_type": "owner_notice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f69c34921120ca",
+  "date": "Thu, 16 Jul 2026 10:10:26 +0300",
+  "sender": "\"Купер\" <info@kuper.ru>",
+  "subject": "Счёт на оплату в магазине METRO",
+  "current_type": "muted",
+  "expected_type": "owner_notice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f8990cfdaf9325",
+  "date": "Wed, 22 Jul 2026 14:23:13 +0300",
+  "sender": "\"Купер\" <info@kuper.ru>",
+  "subject": "Счёт на оплату в магазине METRO",
+  "current_type": "muted",
+  "expected_type": "owner_notice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19facb884364bc59",
+  "date": "Wed, 29 Jul 2026 10:13:17 +0300",
+  "sender": "\"Купер\" <info@kuper.ru>",
+  "subject": "Счёт на оплату в магазине METRO",
+  "current_type": "muted",
+  "expected_type": "owner_notice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fd0ce9b6f7b489",
+  "date": "Wed, 05 Aug 2026 10:23:44 +0300",
+  "sender": "\"Купер\" <info@kuper.ru>",
+  "subject": "Счёт на оплату в магазине METRO",
+  "current_type": "muted",
+  "expected_type": "owner_notice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f222429fef0dd2",
+  "date": "Thu, 2 Jul 2026 12:23:41 +0300",
+  "sender": "\"МатСервис, аренда ковров\" <service@matservice.spb.ru>",
+  "subject": "Акт сверки для Орон ООО от ООО \"МатСервис Люкс\"",
+  "current_type": "muted",
+  "expected_type": "owner_notice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fb7304114f7caf",
+  "date": "Fri, 31 Jul 2026 08:00:19 GMT",
+  "sender": "\"Контур\" <accounts@kontur.ru>",
+  "subject": "Вход в сервис",
+  "current_type": "muted",
+  "expected_type": "",
+  "comment": "Нужен в новый раздел коды и вход в систему"
+ },
+ {
+  "gmail_id": "19f4a3ffbd026e7e",
+  "date": "10 Jul 2026 07:18:53 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_modified",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f0c759a20c6a9b",
+  "date": "28 Jun 2026 07:21:01 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_modified",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f1be722868fe27",
+  "date": "1 Jul 2026 07:19:19 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_modified",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f4f6669638c386",
+  "date": "11 Jul 2026 07:18:59 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_modified",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f7dbf8b5cff967",
+  "date": "20 Jul 2026 07:18:52 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_modified",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fdf98d7307c2df",
+  "date": "8 Aug 2026 07:19:22 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Уведомление о бронированиях",
+  "current_type": "booking_modified",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f8f1ab1c9c6f60",
+  "date": "23 Jul 2026 16:11:58 +0300",
+  "sender": "\"ЛиКи Лофт Отель I LiKi LOFT HOTEL\" <noreply@travellinemail.com>",
+  "subject": "Незавершенная бронь",
+  "current_type": "booking_modified",
+  "expected_type": "",
+  "comment": "Нужно в новый раздел требуется обработка администратором "
+ },
+ {
+  "gmail_id": "19f99cbca02c2fe4",
+  "date": "25 Jul 2026 18:01:37 +0300",
+  "sender": "\"ЛиКи Лофт Отель I LiKi LOFT HOTEL\" <noreply@travellinemail.com>",
+  "subject": "Незавершенная бронь",
+  "current_type": "booking_modified",
+  "expected_type": "",
+  "comment": "Нужно в новый раздел требуется обработка администратором "
+ },
+ {
+  "gmail_id": "19fc67c025b35935",
+  "date": "3 Aug 2026 10:17:22 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Гость заполнил анкету. Бронирование №  20260713-7348-449684157, ЛиКи Лофт Отель I LiKi LOFT HOTEL",
+  "current_type": "guest_message",
+  "expected_type": "review_notification",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f03313b6d8b517",
+  "date": "26 Jun 2026 12:09:44 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Гость заполнил анкету. Бронирование №  20260623-7348-441002468, ЛиКи Лофт Отель I LiKi LOFT HOTEL",
+  "current_type": "guest_message",
+  "expected_type": "review_notification",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f5ba34de5fa155",
+  "date": "13 Jul 2026 16:20:56 +0300",
+  "sender": "noreply@travellinemail.com",
+  "subject": "Гость заполнил анкету. Бронирование №  20260707-7348-442376508, ЛиКи Лофт Отель I LiKi LOFT HOTEL",
+  "current_type": "guest_message",
+  "expected_type": "review_notification",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f608a6fb806a4c",
+  "date": "Tue, 14 Jul 2026 11:47:25 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "Напоминаем: завтра приезжают гости",
+  "current_type": "guest_message",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f522bf28045032",
+  "date": "Sat, 11 Jul 2026 11:43:45 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "Напоминаем: завтра приезжают гости",
+  "current_type": "guest_message",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f1e28cac9a515b",
+  "date": "Wed, 01 Jul 2026 11:42:10 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "Напоминаем: завтра приезжают гости",
+  "current_type": "guest_message",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f941a4de8f4275",
+  "date": "Fri, 24 Jul 2026 11:50:14 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "Напоминаем: завтра приезжают гости",
+  "current_type": "guest_message",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f941a66e80f639",
+  "date": "Fri, 24 Jul 2026 11:50:15 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "Напоминаем: завтра приезжают гости",
+  "current_type": "guest_message",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fbebb4e2ae585c",
+  "date": "Sat, 01 Aug 2026 11:48:36 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "Напоминаем: завтра приезжают гости",
+  "current_type": "guest_message",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f799be20e5d58c",
+  "date": "Sun, 19 Jul 2026 12:01:26 +0300",
+  "sender": "\"Bronevik.com\" <a.melnikova@bronevik.com>",
+  "subject": "Bronevik.com: напоминание о заезде гостей 19.07.2026",
+  "current_type": "guest_message",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f8e373144910d7",
+  "date": "Thu, 23 Jul 2026 12:03:29 +0300",
+  "sender": "\"Bronevik.com\" <k.gordeeva@bronevik.com>",
+  "subject": "Bronevik.com: напоминание о заезде гостей 23.07.2026",
+  "current_type": "guest_message",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f8ea478d45bfdb",
+  "date": "Thu, 23 Jul 2026 14:02:50 +0300",
+  "sender": "\"Bronevik.com\" <l.vlasova@bronevik.com>",
+  "subject": "Bronevik.com: напоминание о заезде гостей 24.07.2026",
+  "current_type": "guest_message",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f935ce177affb9",
+  "date": "Fri, 24 Jul 2026 12:02:44 +0300",
+  "sender": "\"Bronevik.com\" <l.vlasova@bronevik.com>",
+  "subject": "Bronevik.com: напоминание о заезде гостей 24.07.2026",
+  "current_type": "guest_message",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fa8645bd06873b",
+  "date": "Tue, 28 Jul 2026 14:02:56 +0300",
+  "sender": "\"Bronevik.com\" <l.vlasova@bronevik.com>",
+  "subject": "Bronevik.com: напоминание о заезде гостей 29.07.2026",
+  "current_type": "guest_message",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f7f6dbf4d7b4ef",
+  "date": "Mon, 20 Jul 2026 15:08:46 +0300",
+  "sender": "\"Мельникова Анна Андреевна\" <a.melnikova@bronevik.com>",
+  "subject": "Подтвердите выезд 20.07.2026, гости Степанова Дарья по услуге #61412679 Bronevik.com",
+  "current_type": "guest_message",
+  "expected_type": "",
+  "comment": "Нужно в новый раздел требуется обработка администратором "
+ },
+ {
+  "gmail_id": "19fb2ecf9023f1bc",
+  "date": "Thu, 30 Jul 2026 15:08:22 +0300",
+  "sender": "\"Власова Елена Алексеевна\" <l.vlasova@bronevik.com>",
+  "subject": "Подтвердите выезд 30.07.2026, гости Смирнов М., Шиндарова Ю. по услуге #61680404 Bronevik.com",
+  "current_type": "guest_message",
+  "expected_type": "",
+  "comment": "Нужно в новый раздел требуется обработка администратором "
+ },
+ {
+  "gmail_id": "19f82aa2efdcb42a",
+  "date": "Tue, 21 Jul 2026 03:13:38 +0000",
+  "sender": "\"reservation@cbtc.ru\" <reservation@cbtc.ru>",
+  "subject": "RE: 29667912803",
+  "current_type": "guest_message",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fa8faf297bc45c",
+  "date": "Tue, 28 Jul 2026 12:24:44 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "Гость выезжает завтра",
+  "current_type": "guest_message",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f4c393e4505a03",
+  "date": "Fri, 10 Jul 2026 12:08:03 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "Гость выезжает завтра",
+  "current_type": "guest_message",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fc9fd2598e93f2",
+  "date": "4 Aug 2026 02:37:18 +0300",
+  "sender": "\"ЛиКи Лофт Отель I LiKi LOFT HOTEL\" <noreply@travellinemail.com>",
+  "subject": "Незавершенная бронь",
+  "current_type": "guest_message",
+  "expected_type": "",
+  "comment": "Нужно в новый раздел требуется обработка администратором "
+ },
+ {
+  "gmail_id": "19f2264114982d66",
+  "date": "Thu, 2 Jul 2026 10:33:11 +0000",
+  "sender": "\"Самойлова Светлана Петровна\" <SamoilovaSP@cbtc.ru>",
+  "subject": "запрос с/ф (УПД )инн 7841046976",
+  "current_type": "invoice_required",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f2273a8232d554",
+  "date": "Thu, 2 Jul 2026 10:50:32 +0000",
+  "sender": "\"Самойлова Светлана Петровна\" <SamoilovaSP@cbtc.ru>",
+  "subject": "RE: запрос с/ф (УПД )инн 7841046976",
+  "current_type": "invoice_required",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f2680ffa43d323",
+  "date": "Fri, 3 Jul 2026 05:43:34 +0000",
+  "sender": "\"Самойлова Светлана Петровна\" <SamoilovaSP@cbtc.ru>",
+  "subject": "срочно запрос c/ф (УПД) на реального покупателя инн 7841046976",
+  "current_type": "invoice_required",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f4b925bc0600d1",
+  "date": "Fri, 10 Jul 2026 10:28:19 +0000",
+  "sender": "\"Самойлова Светлана Петровна\" <SamoilovaSP@cbtc.ru>",
+  "subject": "инн 7841046976",
+  "current_type": "invoice_required",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f4bfe2a47fdac6",
+  "date": "Fri, 10 Jul 2026 12:26:15 +0000",
+  "sender": "\"Самойлова Светлана Петровна\" <SamoilovaSP@cbtc.ru>",
+  "subject": "RE: инн 7841046976",
+  "current_type": "invoice_required",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f5a504ced19b78",
+  "date": "Mon, 13 Jul 2026 07:10:39 +0000",
+  "sender": "\"Самойлова Светлана Петровна\" <SamoilovaSP@cbtc.ru>",
+  "subject": "срочно  инн 7841046976",
+  "current_type": "invoice_required",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f5a5d3aa7d8e0c",
+  "date": "Mon, 13 Jul 2026 07:24:46 +0000",
+  "sender": "\"Самойлова Светлана Петровна\" <SamoilovaSP@cbtc.ru>",
+  "subject": "RE: срочно инн 7841046976",
+  "current_type": "invoice_required",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f37d1dc495caba",
+  "date": "Mon, 6 Jul 2026 17:25:25 +0300",
+  "sender": "\"Прищепо Елена Викторовна\" <1c.erp@alean.ru>",
+  "subject": "Документы от Общество с ограниченной ответственностью \"СИСТЕМА АЛЕАН\"",
+  "current_type": "invoice_required",
+  "expected_type": "owner_notice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f3a8821fb146d7",
+  "date": "Tue, 07 Jul 2026 06:03:45 +0300",
+  "sender": "\"Илья Мартышкин\" <zakupkiyalagrokoll@mail.ru>",
+  "subject": "Re: Бронирование отеля",
+  "current_type": "invoice_required",
+  "expected_type": "guest_message",
+  "comment": "Нужно в новый раздел требуется обработка администратором "
+ },
+ {
+  "gmail_id": "19f3bd54baf35f18",
+  "date": "Tue, 07 Jul 2026 12:07:40 +0300",
+  "sender": "\"Илья Мартышкин\" <zakupkiyalagrokoll@mail.ru>",
+  "subject": "Re[2]: Бронирование отеля",
+  "current_type": "invoice_required",
+  "expected_type": "guest_message",
+  "comment": "Нужно в новый раздел требуется обработка администратором "
+ },
+ {
+  "gmail_id": "19f40a419e346548",
+  "date": "Wed, 8 Jul 2026 07:32:02 +0000",
+  "sender": "\"Морозова Анна Денисовна\" <MorozovaAD@cbtc.ru>",
+  "subject": "запрос закрывающих документов",
+  "current_type": "invoice_required",
+  "expected_type": "owner_notice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f3db32f3c7ac3b",
+  "date": "Tue, 7 Jul 2026 20:49:25 +0300",
+  "sender": "Zavtrak spb <spbzavtrak@gmail.com>",
+  "subject": "Re: сверка, счет доставка завтраков",
+  "current_type": "invoice_required",
+  "expected_type": "owner_notice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f40fcef9bd24f9",
+  "date": "Wed, 08 Jul 2026 12:09:03 +0300",
+  "sender": "\"Артем Кузин\" <apartrent@list.ru>",
+  "subject": "Fwd: Запрос недостающих актов и отчетов агентов для НДС за 2 кв.",
+  "current_type": "invoice_required",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f4181dec8bcf97",
+  "date": "Wed, 8 Jul 2026 11:34:17 +0000",
+  "sender": "priemspb <priemspb@pegast.ru>",
+  "subject": "RE: 1193835503",
+  "current_type": "invoice_required",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f41c154d749731",
+  "date": "Wed, 08 Jul 2026 15:43:15 +0300",
+  "sender": "\"Илья Мартышкин\" <zakupkiyalagrokoll@mail.ru>",
+  "subject": "Re: Бронирование отеля",
+  "current_type": "invoice_required",
+  "expected_type": "guest_message",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f5665ae9e9ff87",
+  "date": "Sun, 12 Jul 2026 14:30:58 +0300",
+  "sender": "Lindaily docs <no-reply@lindaily.novoline.spb.ru>",
+  "subject": "Документы Lindaily для клиента 3315659 ООО ОРОН",
+  "current_type": "invoice_required",
+  "expected_type": "incoming_invoice",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f6f0b74d237f0a",
+  "date": "Fri, 17 Jul 2026 10:47:06 +0300",
+  "sender": "\"Елена (Открой Мир)\" <bron@welcome-mir.ru>",
+  "subject": "Группа 29-31 июля СПБ",
+  "current_type": "invoice_required",
+  "expected_type": "guest_message",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f604d6699f60ed",
+  "date": "Tue, 14 Jul 2026 11:05:11 +0000",
+  "sender": "priemspb <priemspb@pegast.ru>",
+  "subject": "1186369393",
+  "current_type": "invoice_required",
+  "expected_type": "guest_message",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f7df0e02aa9d0f",
+  "date": "Mon, 20 Jul 2026 05:12:45 +0000",
+  "sender": "HotLine88007007777@multonpartners.ru",
+  "subject": "Re: Re: Re: Re: Названия компании",
+  "current_type": "invoice_required",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f8cf7e6405d4d7",
+  "date": "Thu, 23 Jul 2026 06:14:43 +0300",
+  "sender": "\"Илья Мартышкин\" <zakupkiyalagrokoll@mail.ru>",
+  "subject": "Re[2]: Re[2]: Бронирование отеля",
+  "current_type": "invoice_required",
+  "expected_type": "guest_message",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f8dde8841e9d60",
+  "date": "Thu, 23 Jul 2026 10:26:18 +0300",
+  "sender": "\"Илья Мартышкин\" <zakupkiyalagrokoll@mail.ru>",
+  "subject": "Re: Бронирование отеля",
+  "current_type": "invoice_required",
+  "expected_type": "guest_message",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f8e4c627b63245",
+  "date": "Thu, 23 Jul 2026 12:26:37 +0300",
+  "sender": "\"Сандра Левданская\" <levdanskaya@fi.center>",
+  "subject": "Закрывающие документы по счету №7889447 от 04.05.2026",
+  "current_type": "invoice_required",
+  "expected_type": "guest_message",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f8eb4a755b1266",
+  "date": "Thu, 23 Jul 2026 14:20:31 +0300",
+  "sender": "\"Сандра Левданская\" <levdanskaya@fi.center>",
+  "subject": "Re: Закрывающие документы по счету №7889447 от 04.05.2026",
+  "current_type": "invoice_required",
+  "expected_type": "guest_message",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f8edf254360f77",
+  "date": "Thu, 23 Jul 2026 15:06:55 +0300",
+  "sender": "\"Сандра Левданская\" <levdanskaya@fi.center>",
+  "subject": "Re: Закрывающие документы по счету №7889447 от 04.05.2026",
+  "current_type": "invoice_required",
+  "expected_type": "guest_message",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f8f48fd1a9da4e",
+  "date": "Thu, 23 Jul 2026 17:02:32 +0300",
+  "sender": "Info Service CBTC <1c_mail@cbtc.ru>",
+  "subject": "Закрывающие документы по заявке № 29667912803",
+  "current_type": "invoice_required",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f9c96b5430ff28",
+  "date": "Sun, 26 Jul 2026 07:02:29 +0300",
+  "sender": "Info Service CBTC <1c_mail@cbtc.ru>",
+  "subject": "Информация о выписки счета-фактуры в пользу Покупателя",
+  "current_type": "invoice_required",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f12d4e3eb5587d",
+  "date": "Mon, 29 Jun 2026 10:02:44 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "Гость внес предоплату за бронь",
+  "current_type": "payment_received",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f19f6c58326281",
+  "date": "Tue, 30 Jun 2026 19:17:08 +0000",
+  "sender": "\"Островок! Экстранет\" <hotels@info.mail.emergingtravel.com>",
+  "subject": "Внесена предоплата по бронированию #314045027",
+  "current_type": "payment_received",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f3b88d40e536e4",
+  "date": "Tue, 07 Jul 2026 07:44:10 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "У вас 13 дней, чтобы оставить отзыв о госте",
+  "current_type": "review_notification",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f5a9cf5cb7091b",
+  "date": "Mon, 13 Jul 2026 08:18:39 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "У вас 13 дней, чтобы оставить отзыв о госте",
+  "current_type": "review_notification",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f5f955d93cb038",
+  "date": "Tue, 14 Jul 2026 07:44:10 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "У вас 13 дней, чтобы оставить отзыв о госте",
+  "current_type": "review_notification",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f746a1a0c4846a",
+  "date": "Sat, 18 Jul 2026 08:11:19 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "У вас 13 дней, чтобы оставить отзыв о госте",
+  "current_type": "review_notification",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f841dd820d2f3a",
+  "date": "Tue, 21 Jul 2026 08:40:20 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "У вас 13 дней, чтобы оставить отзыв о госте",
+  "current_type": "review_notification",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19f8df536a7373fe",
+  "date": "Thu, 23 Jul 2026 07:50:16 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "У вас 13 дней, чтобы оставить отзыв о госте",
+  "current_type": "review_notification",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19facdfd68abc1f4",
+  "date": "Wed, 29 Jul 2026 07:55:53 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "У вас 13 дней, чтобы оставить отзыв о госте",
+  "current_type": "review_notification",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19facdfdad6aac2f",
+  "date": "Wed, 29 Jul 2026 07:55:53 +0000",
+  "sender": "\"Суточно.ру\" <info@sutochno.ru>",
+  "subject": "У вас 13 дней, чтобы оставить отзыв о госте",
+  "current_type": "review_notification",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fb4d454dd70f75",
+  "date": "Thu, 30 Jul 2026 21:00:40 +0000",
+  "sender": "<noreply@guest.travelline-mail.com>",
+  "subject": "Отчет рассылки «Feedback-письмо»",
+  "current_type": "review_notification",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fe033698d51f6f",
+  "date": "Sat, 8 Aug 2026 10:08:12 +0300",
+  "sender": "\"2ГИС\" <uk.2gis.support@2gis.ru>",
+  "subject": "Re: Обратная связь. ЛК [#PJQ-078816]",
+  "current_type": "review_notification",
+  "expected_type": "muted",
+  "comment": ""
+ },
+ {
+  "gmail_id": "19fe036f281d1fb5",
+  "date": "Sat, 8 Aug 2026 07:12:04 +0000",
+  "sender": "\"2ГИС для бизнеса\" <reviews@2gis.ru>",
+  "subject": "Ответ на жалобу",
+  "current_type": "review_notification",
+  "expected_type": "muted",
+  "comment": ""
+ }
+]
