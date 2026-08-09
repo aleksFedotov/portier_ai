@@ -2,7 +2,10 @@
 
 Опрос по курсору (internalDate последнего обработанного письма): список новых
 писем → заголовки → дедуп по message_id в БД → тело только новых → конвейер
-(очистка → PII-mask → LLM → unmask → роутер). Метки прочитанности не меняются.
+(очистка → PII-mask → LLM → unmask → роутер). Критерий «обработано» — метка
+Gmail `portier-processed` (тикет 14): выбираем письма без неё, после обработки
+вешаем метку и помечаем письмо прочитанным. При ошибке обработки метку НЕ
+вешаем — письмо попадёт в повторную обработку.
 """
 
 import asyncio
@@ -50,6 +53,19 @@ SILENT_TYPES = frozenset({
     "payment_received",
     "review_notification",
     "unknown",
+})
+
+# Метка «письмо обработано ботом» (тикет 14). Выборка строится по ней,
+# а не по непрочитанности: прочитанное сотрудником письмо всё равно обработается.
+PROCESSED_LABEL = "portier-processed"
+
+# Статус-сигнал для check_once: письмо уже обработано ранее (дедуп по БД) —
+# метку вешаем, чтобы Gmail больше его не возвращал.
+ALREADY_PROCESSED = "already_processed"
+
+# Статусы, при которых check_once вешает метку PROCESSED_LABEL на письмо.
+LABEL_OK_STATUSES = frozenset({
+    EmailStatus.SUCCESS.value, EmailStatus.SKIPPED.value, ALREADY_PROCESSED,
 })
 
 SCOPES = [
@@ -145,12 +161,14 @@ def build_query(after_epoch_seconds: int | None, backlog_days: int) -> str:
 
     category:primary — только вкладка «Основные»: промоакции, соцсети,
     оповещения и форумы пропускаем ещё на стороне Gmail, не тратя запросы к LLM.
+    -label:portier-processed — без метки «обработано» (тикет 14): прочитанность
+    письма значения не имеет, повторно обработанные не приходят.
     """
     if after_epoch_seconds is None:
         after_epoch_seconds = int(
             (datetime.now() - timedelta(days=backlog_days)).timestamp()
         )
-    return f"after:{after_epoch_seconds} category:primary"
+    return f"after:{after_epoch_seconds} category:primary -label:{PROCESSED_LABEL}"
 
 
 class GmailClient:
@@ -159,6 +177,7 @@ class GmailClient:
     def __init__(self, settings: Settings):
         self._settings = settings
         self._service = None
+        self._processed_label_id: str | None = None
 
     def _build(self):
         from googleapiclient.discovery import build
@@ -301,6 +320,58 @@ class GmailClient:
         logger.info("Черновик создан в Gmail: %s", draft.get("id"))
         return draft["id"]
 
+    async def _processed_label(self) -> str:
+        """ID метки portier-processed; метка создаётся при первом обращении."""
+        if self._processed_label_id:
+            return self._processed_label_id
+        service = await self._ensure()
+
+        def _find_or_create() -> str:
+            labels = (
+                service.users().labels().list(userId="me").execute().get("labels", [])
+            )
+            for label in labels:
+                if label.get("name") == PROCESSED_LABEL:
+                    return label["id"]
+            created = (
+                service.users()
+                .labels()
+                .create(
+                    userId="me",
+                    body={
+                        "name": PROCESSED_LABEL,
+                        "labelListVisibility": "labelShow",
+                        "messageListVisibility": "show",
+                    },
+                )
+                .execute()
+            )
+            logger.info("Создана метка Gmail %s", PROCESSED_LABEL)
+            return created["id"]
+
+        self._processed_label_id = await asyncio.to_thread(_find_or_create)
+        return self._processed_label_id
+
+    async def mark_processed(self, gmail_id: str) -> None:
+        """Повесить метку portier-processed и пометить письмо прочитанным."""
+        label_id = await self._processed_label()
+        service = await self._ensure()
+
+        def _modify():
+            return (
+                service.users()
+                .messages()
+                .modify(
+                    userId="me",
+                    id=gmail_id,
+                    body={"addLabelIds": [label_id], "removeLabelIds": ["UNREAD"]},
+                )
+                .execute()
+            )
+
+        await asyncio.to_thread(_modify)
+        logger.info("Письмо %s: метка %s + прочитано", gmail_id, PROCESSED_LABEL)
+
 
 async def get_last_uid(session) -> int | None:
     """Курсор: максимальный internalDate (мс) обработанного письма (None — база пуста)."""
@@ -398,8 +469,12 @@ def _unmask_result(result, mapping: dict) -> None:
                 setattr(invoice, field, unmask_pii(value, mapping))
 
 
-async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: str) -> None:
-    """Полный конвейер одного письма: заголовки → дедуп → тело → LLM → Telegram."""
+async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: str) -> str:
+    """Полный конвейер одного письма: заголовки → дедуп → тело → LLM → Telegram.
+
+    Возвращает финальный статус (SUCCESS/ERROR/SKIPPED или ALREADY_PROCESSED
+    при дедупе) — по нему check_once решает, вешать ли метку PROCESSED_LABEL.
+    """
     session_factory = get_session_factory()
     headers = await gmail.fetch_headers(gmail_id)
     uid = headers["internal_date"] or 0
@@ -408,7 +483,7 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
     async with session_factory() as session:
         if await is_processed(session, message_id):
             logger.info("Письмо %s уже обработано, пропуск", gmail_id)
-            return
+            return ALREADY_PROCESSED
 
         body_text = await gmail.fetch_body_text(gmail_id)
 
@@ -438,19 +513,19 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
             )
             record.status = EmailStatus.SUCCESS.value
             await session.commit()
-            return
+            return record.status
 
         # Входящие счета (тикет 10): вложение-счёт → документ в третью группу,
         # исключения (Купер) — лично владельцу. Тоже раньше глушения.
         if await _process_incoming_invoice(gmail, bot, settings, gmail_id, record, session):
-            return
+            return record.status
 
         # Чёрный список (тикет 08): молча помечаем SKIPPED, LLM не вызываем
         if is_muted(record.sender, record.subject, settings.MUTED_SENDERS):
             logger.info("Письмо %s в чёрном списке (%s) — пропуск", gmail_id, record.sender)
             record.status = EmailStatus.SKIPPED.value
             await session.commit()
-            return
+            return record.status
 
         # Уведомление владельцу о документах «для ручной обработки» (тикет 09)
         # и о важных письмах по паре адрес+тема (тикет 15: сверка 101hotels)
@@ -465,12 +540,12 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
             )
             record.status = EmailStatus.SUCCESS.value
             await session.commit()
-            return
+            return record.status
 
         # Реестры Яндекс Путешествий — детерминированная обработка без LLM
         if is_yandex_registry(record.sender, record.subject):
             await _process_yandex_registry(gmail, bot, settings, gmail_id, record, session)
-            return
+            return record.status
 
         try:
             result, mapping = await analyze_body(settings, record.sender, record.subject, body_text)
@@ -480,7 +555,7 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
             record.error_log = f"{type(exc).__name__}: {exc}"
             await session.commit()
             await _notify_error(bot, settings.TELEGRAM_CHAT_ID, record.sender, record.subject, str(exc))
-            return
+            return record.status
 
         # Справочник агентов (тикет 13): подтверждение брони от агента с
         # invoice_on_booking → счёт. Правило работает от справочника, не от LLM.
@@ -515,7 +590,7 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
         ):
             record.status = EmailStatus.SUCCESS.value
             await session.commit()
-            return
+            return record.status
 
         try:
             invoice_note = await _prepare_invoice_note(
@@ -528,7 +603,7 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
             record.error_log = f"{type(exc).__name__}: {exc}"
             await session.commit()
             await _notify_error(bot, settings.TELEGRAM_CHAT_ID, record.sender, record.subject, str(exc))
-            return
+            return record.status
 
         await route_notification(
             bot, settings.TELEGRAM_CHAT_ID, result,
@@ -540,6 +615,7 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
         # если отправка упала, письмо остаётся PENDING и будет обработано повторно
         record.status = EmailStatus.SUCCESS.value
         await session.commit()
+        return record.status
 
 
 async def _process_incoming_invoice(
@@ -714,10 +790,22 @@ async def check_once(gmail: GmailClient, bot, settings: Settings) -> None:
 
     for gmail_id in ids:
         try:
-            await process_email(gmail, bot, settings, gmail_id)
+            status = await process_email(gmail, bot, settings, gmail_id)
         except Exception:
-            # Ошибка одного письма не останавливает очередь
+            # Ошибка одного письма не останавливает очередь; метку не вешаем —
+            # письмо придёт на повторную обработку
             logger.exception("Ошибка обработки письма %s", gmail_id)
+            continue
+        # Тикет 14: метка portier-processed + «прочитано» — только при успехе
+        # (SUCCESS/SKIPPED/дедуп). При ERROR метка не ставится.
+        if status in LABEL_OK_STATUSES:
+            try:
+                await gmail.mark_processed(gmail_id)
+            except Exception:
+                logger.warning(
+                    "Не удалось повесить метку %s на письмо %s",
+                    PROCESSED_LABEL, gmail_id, exc_info=True,
+                )
 
 
 async def gmail_loop(settings: Settings, bot) -> None:

@@ -20,12 +20,14 @@ def _b64(text: str) -> str:
 def test_build_query_backlog():
     query = build_query(None, 7)
     assert query.startswith("after:")
-    assert query.endswith(" category:primary")
+    assert query.endswith(" category:primary -label:portier-processed")
     assert int(query.split(":")[1].split()[0]) > 0
 
 
 def test_build_query_cursor():
-    assert build_query(1700000000, 7) == "after:1700000000 category:primary"
+    assert build_query(1700000000, 7) == (
+        "after:1700000000 category:primary -label:portier-processed"
+    )
 
 
 def test_parse_headers():
@@ -82,3 +84,68 @@ def test_get_credentials_without_token(tmp_path, monkeypatch):
     with pytest.raises(GmailAuthError) as exc:
         get_credentials(_S())
     assert "gmail_auth" in str(exc.value)
+
+
+# --- Тикет 14: метка portier-processed вешается только при успехе ---
+
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+import portier.gmail_client as gc
+from portier.db import init_db, init_engine
+
+
+@pytest.fixture
+async def _db():
+    init_engine("sqlite+aiosqlite:///:memory:")
+    await init_db()
+
+
+async def test_check_once_labels_only_ok_statuses(_db, monkeypatch):
+    """SUCCESS/SKIPPED/дедуп → метка; ERROR и исключение → без метки."""
+    statuses = {
+        "g-ok": "SUCCESS",
+        "g-muted": "SKIPPED",
+        "g-dup": gc.ALREADY_PROCESSED,
+        "g-err": "ERROR",
+    }
+
+    async def fake_process(gmail, bot, settings, gmail_id):
+        if gmail_id == "g-crash":
+            raise RuntimeError("boom")
+        return statuses[gmail_id]
+
+    monkeypatch.setattr(gc, "process_email", fake_process)
+    gmail = SimpleNamespace(
+        list_new_message_ids=AsyncMock(
+            return_value=["g-ok", "g-muted", "g-dup", "g-err", "g-crash"]
+        ),
+        mark_processed=AsyncMock(),
+    )
+    settings = SimpleNamespace(BACKLOG_DAYS=7)
+
+    await gc.check_once(gmail, bot=None, settings=settings)
+
+    labeled = sorted(c.args[0] for c in gmail.mark_processed.call_args_list)
+    assert labeled == ["g-dup", "g-muted", "g-ok"]
+
+
+async def test_check_once_label_failure_does_not_stop_queue(_db, monkeypatch):
+    """Сбой mark_processed не роняет цикл — следующие письма обрабатываются."""
+    seen = []
+
+    async def fake_process(gmail, bot, settings, gmail_id):
+        seen.append(gmail_id)
+        return "SUCCESS"
+
+    monkeypatch.setattr(gc, "process_email", fake_process)
+    gmail = SimpleNamespace(
+        list_new_message_ids=AsyncMock(return_value=["g-1", "g-2"]),
+        mark_processed=AsyncMock(side_effect=RuntimeError("gmail down")),
+    )
+    settings = SimpleNamespace(BACKLOG_DAYS=7)
+
+    await gc.check_once(gmail, bot=None, settings=settings)
+
+    assert seen == ["g-1", "g-2"]
+    assert gmail.mark_processed.call_count == 2
