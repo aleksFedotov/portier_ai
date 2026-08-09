@@ -385,7 +385,8 @@ class GmailClient:
         return self._processed_label_id
 
     async def mark_processed(self, gmail_id: str) -> None:
-        """Повесить метку portier-processed и пометить письмо прочитанным."""
+        """Повесить метку portier-processed. Письмо остаётся непрочитанным (тикет 20):
+        двойная проверка — программа обработала, администратор видит письмо сам."""
         label_id = await self._processed_label()
         service = await self._ensure()
 
@@ -396,13 +397,13 @@ class GmailClient:
                 .modify(
                     userId="me",
                     id=gmail_id,
-                    body={"addLabelIds": [label_id], "removeLabelIds": ["UNREAD"]},
+                    body={"addLabelIds": [label_id]},
                 )
                 .execute()
             )
 
         await asyncio.to_thread(_modify)
-        logger.info("Письмо %s: метка %s + прочитано", gmail_id, PROCESSED_LABEL)
+        logger.info("Письмо %s: метка %s (остаётся непрочитанным)", gmail_id, PROCESSED_LABEL)
 
 
 async def get_last_uid(session) -> int | None:
