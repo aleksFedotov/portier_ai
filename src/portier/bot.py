@@ -48,9 +48,11 @@ def create_bot(
 
 def create_dispatcher() -> Dispatcher:
     from .callbacks import router as callbacks_router
+    from .handlers.invoices_cmd import router as invoices_router
 
     dp = Dispatcher()
     dp.include_router(callbacks_router)
+    dp.include_router(invoices_router)  # тикет 06: /invoices в чате счетов
     return dp
 
 

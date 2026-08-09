@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     # Fallback: владелец → основной чат.
     INCOMING_INVOICES_CHAT_ID: int | None = None
 
+    # Отдельный чат для ВЫСТАВЛЯЕМЫХ счетов (тикет 06): уведомления
+    # invoice_required + PDF и команда /invoices. Не задан — всё в основной чат.
+    INVOICE_CHAT_ID: int | None = None
+
     # Важные алерты → третья группа (правила как в MUTED_SENDERS).
     ALERT_RULES: list[str] = [
         "support@travelline.ru|возможный овербукинг",

@@ -10,7 +10,7 @@ from portier.schemas import EmailAnalysisResult
 EXPECTED_BUTTONS = {
     "booking_comment": ["recorded_in_pms", "replied_to_guest"],
     "guest_message": ["replied_to_guest"],
-    "invoice_required": ["invoice_sent"],
+    "invoice_required": ["invoice_sent", "invoice_paid"],
     "booking_modified": ["recorded_in_pms"],
     "booking_cancelled": ["recorded_in_pms"],
     "payment_failed": [],

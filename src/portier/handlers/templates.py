@@ -14,6 +14,7 @@ ACTION_LABELS = {
     "recorded_in_pms": "Записано в PMS",
     "replied_to_guest": "Отвечено гостю",
     "invoice_sent": "Счет отправлен",
+    "invoice_paid": "💰 Оплачен",
 }
 
 
@@ -85,7 +86,9 @@ def build_notification(
         )
         if invoice_note:
             text += f"\n{esc(invoice_note)}"
-        buttons = InlineKeyboardMarkup(inline_keyboard=[_row("invoice_sent", email_id=email_id)])
+        buttons = InlineKeyboardMarkup(
+            inline_keyboard=[_row("invoice_sent", "invoice_paid", email_id=email_id)]
+        )
     elif t == "booking_cancelled":
         text = (
             f"❌ <b>Отмена бронирования</b>\n\n"

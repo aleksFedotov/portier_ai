@@ -48,6 +48,9 @@ _NEW_COLUMNS = {
         ("kpp", "VARCHAR DEFAULT ''"),
         ("legal_address", "VARCHAR DEFAULT ''"),
     ],
+    "processed_emails": [
+        ("invoice_pdf", "VARCHAR"),
+    ],
 }
 
 

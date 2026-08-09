@@ -224,10 +224,14 @@ async def test_invoice_pipeline_happy_path(monkeypatch, tmp_path):
     buttons = bot.send_message.await_args.kwargs["reply_markup"]
     assert buttons.inline_keyboard[0][0].callback_data.startswith("action:invoice_sent:")
 
-    # Запись в БД — SUCCESS
+    # Запись в БД — SUCCESS, путь к PDF сохранён (тикет 06: команда /invoices)
     record = await _get_record()
     assert record.status == "SUCCESS"
     assert record.email_type == "invoice_required"
+    assert record.invoice_pdf and record.invoice_pdf.endswith(".pdf")
+    from pathlib import Path
+
+    assert Path(record.invoice_pdf).exists()
 
 
 async def test_invoice_pipeline_unknown_company(monkeypatch, tmp_path):

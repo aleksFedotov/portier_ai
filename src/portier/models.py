@@ -36,6 +36,8 @@ class ProcessedEmail(Base):
     llm_result: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     status: Mapped[str] = mapped_column(String, default=EmailStatus.PENDING.value)
     error_log: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Путь к сгенерированному PDF счёта (тикет 06: команда /invoices)
+    invoice_pdf: Mapped[str | None] = mapped_column(String, nullable=True)
 
     actions: Mapped[list["EmailAction"]] = relationship(back_populates="email")
 

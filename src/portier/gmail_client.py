@@ -42,6 +42,14 @@ def _invoices_chat(settings: Settings) -> int | None:
     return settings.INCOMING_INVOICES_CHAT_ID or _owner_chat(settings)
 
 
+def _invoice_chat(settings) -> int | None:
+    """Чат ВЫСТАВЛЯЕМЫХ счетов (тикет 06); не настроен — основной чат.
+
+    getattr: в тестах settings собирается SimpleNamespace-ом без INVOICE_CHAT_ID.
+    """
+    return getattr(settings, "INVOICE_CHAT_ID", None) or settings.TELEGRAM_CHAT_ID
+
+
 # Типы, которые фиксируем в БД без уведомления в Telegram (тикет 15).
 # Исключение — booking_confirmed с комментарием гостя: комментарий нужен
 # администраторам (отдельные письма-комментарии дублируются и молчат).
@@ -594,7 +602,7 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
 
         try:
             invoice_note = await _prepare_invoice_note(
-                result, settings, gmail, bot, record.sender, session, agent=agent
+                result, settings, gmail, bot, record, session, agent=agent
             )
         except Exception as exc:
             # Сбой PDF/черновика: ERROR в БД + ⚠️ админу, очередь не останавливается
@@ -605,8 +613,14 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
             await _notify_error(bot, settings.TELEGRAM_CHAT_ID, record.sender, record.subject, str(exc))
             return record.status
 
+        # Тикет 06: счета — в отдельный чат (если настроен), остальное — в основной
+        chat_id = (
+            _invoice_chat(settings)
+            if result.type == "invoice_required"
+            else settings.TELEGRAM_CHAT_ID
+        )
         await route_notification(
-            bot, settings.TELEGRAM_CHAT_ID, result,
+            bot, chat_id, result,
             email_id=record.id, sender=record.sender, subject=record.subject,
             body_text=body_text, invoice_note=invoice_note,
         )
@@ -711,15 +725,16 @@ async def _process_yandex_registry(
 
 
 async def _prepare_invoice_note(
-    result, settings: Settings, gmail: GmailClient, bot, sender: str, session,
+    result, settings: Settings, gmail: GmailClient, bot, record, session,
     agent=None,
 ) -> str | None:
-    """Для invoice_required: реестр → PDF → файл в общий чат → текст пометки.
+    """Для invoice_required: реестр → PDF → файл в чат счетов → текст пометки.
 
     Черновики в Gmail отключены (решение пользователя 08.08.2026): пока счёт
     только уходит в чат на проверку. Черновики/автоотправка — тикет 12.
     agent — запись справочника агентов (тикет 13): подставляет email для счёта
     и пометку о корректировке цены.
+    Путь к PDF сохраняется в record.invoice_pdf (тикет 06: команда /invoices).
     """
     if result.type != "invoice_required":
         return None
@@ -729,6 +744,7 @@ async def _prepare_invoice_note(
     )
     from .invoices import generate_invoice_pdf, invoice_missing_fields
 
+    sender = record.sender
     # Данные реестра компаний в приоритете над LLM-извлечёнными
     company = await find_company(session, sender, result.invoice)
     data = merge_invoice_data(result, sender, company)
@@ -737,10 +753,12 @@ async def _prepare_invoice_note(
 
     effective = result.model_copy(update={"invoice": data.invoice})
     pdf_path = generate_invoice_pdf(effective, settings)
+    record.invoice_pdf = str(pdf_path)
+    await session.commit()
 
     await send_document(
         bot,
-        settings.TELEGRAM_CHAT_ID,
+        _invoice_chat(settings),
         filename=pdf_path.name,
         data=pdf_path.read_bytes(),
         caption=f"📎 Счёт для {data.to} — проверьте перед отправкой",
