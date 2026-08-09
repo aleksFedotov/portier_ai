@@ -24,13 +24,25 @@ def parse_rule(rule: str) -> tuple[str, str | None]:
     return addr.strip().lower(), (pattern.strip().lower() if sep else None)
 
 
+def addr_matches(rule_addr: str, addr: str) -> bool:
+    """Совпадение адреса с адресной частью правила.
+
+    Правило "@domain.ru" матчит любой ящик домена (нужно для адресов
+    вида o_<номер>.spb@v2.hbconnect.ru и bronevik.com с меняющимися
+    локальными частями); обычное правило — точное совпадение.
+    """
+    if rule_addr.startswith("@"):
+        return addr.endswith(rule_addr)
+    return addr == rule_addr
+
+
 def is_muted(sender: str, subject: str, rules: list[str]) -> bool:
     """True, если письмо попадает под хотя бы одно правило чёрного списка."""
     addr = _extract_addr(sender)
     subj = (subject or "").lower()
     for rule in rules:
         rule_addr, pattern = parse_rule(rule)
-        if not rule_addr or addr != rule_addr:
+        if not rule_addr or not addr_matches(rule_addr, addr):
             continue
         if pattern is None or pattern in subj:
             return True

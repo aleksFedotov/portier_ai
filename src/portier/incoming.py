@@ -10,7 +10,7 @@
 
 import re
 
-from .muted import _extract_addr, parse_rule
+from .muted import _extract_addr, addr_matches, parse_rule
 
 _INVOICE_WORD_RE = re.compile(r"сч[её]т|invoice|schet", re.IGNORECASE)
 _DOC_SUFFIXES = (".pdf", ".xls", ".xlsx")
@@ -31,7 +31,7 @@ def is_alert(sender: str, subject: str, rules: list[str]) -> bool:
     subj = (subject or "").lower()
     for rule in rules:
         rule_addr, pattern = parse_rule(rule)
-        if not rule_addr or addr != rule_addr:
+        if not rule_addr or not addr_matches(rule_addr, addr):
             continue
         if pattern is None or pattern in subj:
             return True

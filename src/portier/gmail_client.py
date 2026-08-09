@@ -552,15 +552,40 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
         if await _process_incoming_invoice(gmail, bot, settings, gmail_id, record, session):
             return record.status
 
-        # Чёрный список (тикет 08): молча помечаем SKIPPED, LLM не вызываем
-        if is_muted(record.sender, record.subject, settings.MUTED_SENDERS):
-            logger.info("Письмо %s в чёрном списке (%s) — пропуск", gmail_id, record.sender)
-            record.status = EmailStatus.SKIPPED.value
+        # Коды входа в учётные записи (тикет 19): текстовое уведомление
+        # в третью группу. Раньше глушения — accounts@kontur.ru заглушён,
+        # но «Вход в сервис» владелец должен видеть.
+        if is_alert(record.sender, record.subject, settings.LOGIN_CODE_RULES):
+            record.email_type = "login_code"
+            await send_notification(
+                bot, _invoices_chat(settings),
+                "🔑 <b>Код / вход в учётную запись</b>\n\n"
+                f"📧 От: {esc(record.sender)}\n"
+                f"📌 Тема: {esc(record.subject)}",
+            )
+            record.status = EmailStatus.SUCCESS.value
+            await session.commit()
+            return record.status
+
+        # Требуется обработка администратором (тикет 19): заявки HBConnect,
+        # незавершённые брони, подтверждения выезда и бронирований Островка →
+        # основная группа. Раньше глушения и LLM.
+        if is_alert(record.sender, record.subject, settings.ADMIN_ATTENTION_RULES):
+            record.email_type = "admin_attention"
+            await send_notification(
+                bot, settings.TELEGRAM_CHAT_ID,
+                "🛎 <b>Требуется обработка администратором</b>\n\n"
+                f"📧 От: {esc(record.sender)}\n"
+                f"📌 Тема: {esc(record.subject)}",
+            )
+            record.status = EmailStatus.SUCCESS.value
             await session.commit()
             return record.status
 
         # Уведомление владельцу о документах «для ручной обработки» (тикет 09)
-        # и о важных письмах по паре адрес+тема (тикет 15: сверка 101hotels)
+        # и о важных письмах по паре адрес+тема (тикет 15: сверка 101hotels).
+        # Раньше глушения (тикет 19): у Купера и МатСервиса адрес заглушён
+        # целиком, но счета и акты сверки владелец должен видеть.
         if _extract_addr(record.sender) in {a.lower() for a in settings.OWNER_NOTICE_SENDERS} \
                 or is_alert(record.sender, record.subject, settings.OWNER_NOTICE_RULES):
             record.email_type = "owner_notice"
@@ -571,6 +596,13 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
                 f"📌 Тема: {esc(record.subject)}",
             )
             record.status = EmailStatus.SUCCESS.value
+            await session.commit()
+            return record.status
+
+        # Чёрный список (тикет 08): молча помечаем SKIPPED, LLM не вызываем
+        if is_muted(record.sender, record.subject, settings.MUTED_SENDERS):
+            logger.info("Письмо %s в чёрном списке (%s) — пропуск", gmail_id, record.sender)
+            record.status = EmailStatus.SKIPPED.value
             await session.commit()
             return record.status
 
@@ -688,6 +720,22 @@ async def _process_incoming_invoice(
         return True
 
     if not any(is_invoice_filename(name) for name, _ in attachments):
+        # Тикет 19: известные отправители входящих счетов без узнаваемого
+        # вложения (охрана, ККТ, хозтовары) — текстовое уведомление в третью
+        # группу, исключения (Купер) — лично владельцу.
+        if _extract_addr(record.sender) in {
+            a.lower() for a in settings.INCOMING_INVOICE_SENDERS
+        }:
+            record.email_type = "incoming_invoice"
+            await send_notification(
+                bot, _invoices_chat(settings),
+                "🧾 <b>Входящий счёт</b>\n\n"
+                f"📧 От: {esc(record.sender)}\n"
+                f"📌 Тема: {esc(record.subject)}",
+            )
+            record.status = EmailStatus.SUCCESS.value
+            await session.commit()
+            return True
         return False
 
     is_exception = _extract_addr(record.sender) in {

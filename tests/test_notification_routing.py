@@ -108,20 +108,20 @@ async def test_booking_confirmed_without_comment_silent(monkeypatch, tmp_path):
 # ---------- коды входа и расчётный отдел → третья группа ----------
 
 
-@pytest.mark.parametrize("sender,subject", [
-    ("info@101hotels.com <info@101hotels.com>", "Код для входа в Extranet"),
-    ("TravelLine <noreply@travellinemail.com>", "Вход в учетную запись TravelLine"),
-    ("Ozon <mailer@sender.ozon.ru>", "Подтверждение учетных данных Ozon"),
-    ("Telegram <noreply@telegram.org>", "Ваш код - 403611"),
+@pytest.mark.parametrize("sender,subject,expected_type", [
+    ("info@101hotels.com <info@101hotels.com>", "Код для входа в Extranet", "login_code"),
+    ("TravelLine <noreply@travellinemail.com>", "Вход в учетную запись TravelLine", "login_code"),
+    ("Ozon <mailer@sender.ozon.ru>", "Подтверждение учетных данных Ozon", "login_code"),
+    ("Telegram <noreply@telegram.org>", "Ваш код - 403611", "login_code"),
     ("Расчетный отдел TravelLine <accounting@travelline.ru>",
-     "Продление подписки на компоненты TravelLine"),
+     "Продление подписки на компоненты TravelLine", "incoming_invoice"),
 ])
-async def test_security_alerts_to_third_group(monkeypatch, tmp_path, sender, subject):
+async def test_security_alerts_to_third_group(monkeypatch, tmp_path, sender, subject, expected_type):
     bot, record, analyze = await _run_pipeline(
         monkeypatch, tmp_path, sender, subject,
         INCOMING_INVOICES_CHAT_ID=555,
     )
-    assert record.email_type == "alert"
+    assert record.email_type == expected_type
     analyze.assert_not_awaited()  # детерминированно, без LLM
     assert _msg_chat_id(bot) == 555
 

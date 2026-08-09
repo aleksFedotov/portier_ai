@@ -10,7 +10,7 @@ from portier import gmail_client
 from portier.config import Settings
 from portier.db import get_session_factory, init_db, init_engine
 from portier.models import EmailStatus, ProcessedEmail
-from portier.muted import is_muted, parse_rule
+from portier.muted import addr_matches, is_muted, parse_rule
 
 # ---------- parse_rule / is_muted ----------
 
@@ -98,6 +98,70 @@ async def test_pipeline_muted_only_by_subject(monkeypatch, tmp_path):
     _, _, record, analyze = await _run_pipeline(
         monkeypatch, tmp_path,
         "TravelLine <noreply@travellinemail.com>", "Выдана карта лояльности № 123",
+    )
+    assert record.status == EmailStatus.SKIPPED.value
+    analyze.assert_not_awaited()
+
+
+# ---------- доменные правила (тикет 19) ----------
+
+
+def test_addr_matches_domain_rule():
+    assert addr_matches("@v2.hbconnect.ru", "o_1631426.spb@v2.hbconnect.ru")
+    assert not addr_matches("@v2.hbconnect.ru", "other@hbconnect.ru")
+    assert addr_matches("a@b.ru", "a@b.ru")
+    assert not addr_matches("a@b.ru", "x@b.ru")
+
+
+def test_is_muted_domain_rule():
+    rules = ["@bronevik.com|напоминание о заезде гостей"]
+    assert is_muted(
+        "Bronevik <l.vlasova@bronevik.com>",
+        "Bronevik.com: напоминание о заезде гостей 24.07.2026", rules,
+    )
+    assert not is_muted("Bronevik <l.vlasova@bronevik.com>", "Вопрос по оплате", rules)
+
+
+async def test_pipeline_owner_notice_before_muted(monkeypatch, tmp_path):
+    """Купер заглушён целиком, но «Счёт на оплату» уходит владельцу (тикет 19)."""
+    _, bot, record, analyze = await _run_pipeline(
+        monkeypatch, tmp_path,
+        '"Купер" <info@kuper.ru>', "Счёт на оплату в магазине METRO",
+    )
+    assert record.email_type == "owner_notice"
+    assert record.status == EmailStatus.SUCCESS.value
+    analyze.assert_not_awaited()
+    bot.send_message.assert_called_once()  # уведомление владельцу ушло
+
+
+async def test_pipeline_login_code(monkeypatch, tmp_path):
+    """Контур заглушён целиком, но «Вход в сервис» — код в третью группу."""
+    _, bot, record, analyze = await _run_pipeline(
+        monkeypatch, tmp_path,
+        '"Контур" <accounts@kontur.ru>', "Вход в сервис",
+    )
+    assert record.email_type == "login_code"
+    analyze.assert_not_awaited()
+    bot.send_message.assert_called_once()
+
+
+async def test_pipeline_admin_attention(monkeypatch, tmp_path):
+    """Заявка HBConnect — в основную группу, без LLM."""
+    _, bot, record, analyze = await _run_pipeline(
+        monkeypatch, tmp_path,
+        '"HBConnect - Спб" <o_1631426.spb@v2.hbconnect.ru>',
+        "Заявка на бронирование #1631426",
+    )
+    assert record.email_type == "admin_attention"
+    analyze.assert_not_awaited()
+    bot.send_message.assert_called_once()
+
+
+async def test_pipeline_travelline_digest_muted(monkeypatch, tmp_path):
+    """Ежедневный дайджест «Уведомление о бронированиях» глушится (тикет 19)."""
+    _, _, record, analyze = await _run_pipeline(
+        monkeypatch, tmp_path,
+        "TravelLine <noreply@travellinemail.com>", "Уведомление о бронированиях",
     )
     assert record.status == EmailStatus.SKIPPED.value
     analyze.assert_not_awaited()

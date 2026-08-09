@@ -10,6 +10,10 @@ _SETTINGS = SimpleNamespace(
     OWNER_NOTICE_SENDERS=["director@agency.ru"],
     OWNER_NOTICE_RULES=["101hotels@example.com|сверка"],
     INVOICE_OWNER_EXCEPTIONS=["kuper@example.com"],
+    ALERT_RULES=["gosuslugi@example.gov"],
+    LOGIN_CODE_RULES=["extranet@example.com|код"],
+    ADMIN_ATTENTION_RULES=["@hbconnect.ru|заявка на бронирование"],
+    INCOMING_INVOICE_SENDERS=["cc@delta.example.com"],
 )
 
 
@@ -136,10 +140,32 @@ def test_prefilters_incoming_invoice():
 
 
 def test_prefilters_priority_order():
+    # алерт проверяется раньше всего
+    assert apply_prefilters(
+        _SETTINGS, "gosuslugi@example.gov", "Счёт", ["Счет на оплату.xlsx"]
+    ) == "alert"
     # входящий счёт проверяется раньше чёрного списка
     assert apply_prefilters(
         _SETTINGS, "spam@example.com", "Счёт", ["Счет на оплату.xlsx"]
     ) == "incoming_invoice"
+
+
+def test_prefilters_ticket19():
+    # входящий счёт по отправителю без вложения
+    assert apply_prefilters(
+        _SETTINGS, "Охрана <cc@delta.example.com>", "Пополните счет", []
+    ) == "incoming_invoice"
+    # код входа
+    assert apply_prefilters(
+        _SETTINGS, "extranet@example.com", "Код для входа в Экстранет", []
+    ) == "login_code"
+    assert apply_prefilters(
+        _SETTINGS, "extranet@example.com", "Новое бронирование", []
+    ) is None
+    # требуется обработка администратором (доменное правило)
+    assert apply_prefilters(
+        _SETTINGS, "o_1631426.spb@hbconnect.ru", "Заявка на бронирование #1631426", []
+    ) == "admin_attention"
 
 
 def test_report_filtered_rows():

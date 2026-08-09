@@ -77,27 +77,26 @@ class Settings(BaseSettings):
         "no-reply@rospotrebnadzor.ru",
         "notifier@fsa.gov.ru",
         "nadegda.ivanova88@yandex.ru",
-        # Расчётный отдел TravelLine (тикет 15): все письма → третья группа;
-        # письма со вложением-счётом перехватываются раньше (тикет 10) документом.
-        "accounting@travelline.ru",
-        # Коды входа в учётные записи (тикет 15) — владелец и гендиректор
-        # должны видеть, что кто-то пытается войти.
-        "info@101hotels.com|код для входа",
-        "noreply@travellinemail.com|вход в учетную запись",
-        "mailer@sender.ozon.ru|подтверждение учетных данных",
-        "noreply@telegram.org",
         # onetwotrip глушится целиком (MUTED_SENDERS), но алерты идут раньше
         # глушения — коды входа из экстранета не потеряются.
-        "extranet@onetwotrip.com|код",
     ]
 
     # Важные письма лично владельцу (тикет 15): правила «addr|шаблон темы»,
     # как в ALERT_RULES. Отличается от OWNER_NOTICE_SENDERS тем, что матчит
     # пару адрес+тема (101hotels шлёт и брони, и сверки с одного адреса).
     # «cверк» с латинской c — реальная опечатка в темах 101hotels.
+    # Проверка идёт РАНЬШЕ чёрного списка: у Купера и МатСервиса весь адрес
+    # заглушён, но счета/акты сверки от них владелец должен видеть.
     OWNER_NOTICE_RULES: list[str] = [
         "info@101hotels.com|сверк",
         "info@101hotels.com|cверк",
+        # Тикет 19 (по corrections.json): сверки и счета от заглушённых адресов
+        "hotels@info.mail.emergingtravel.com|сверка началась",
+        "hotels@travel.yandex.ru|реестр завершенных бронирований",
+        "info@kuper.ru|счёт на оплату",
+        "service@matservice.spb.ru|акт сверки",
+        "spbzavtrak@gmail.com|сверка",
+        "MorozovaAD@cbtc.ru|закрывающ",
     ]
 
     # Исключения из общего правила входящих счетов: их счета идут
@@ -122,6 +121,52 @@ class Settings(BaseSettings):
         "buh@ozon.travel",
         "info.russia@lindaily.com",
         "fin50@roomlink.ru",
+        # Тикет 19: закрывающие документы от контрагентов — владельцу
+        "1c.erp@alean.ru",
+    ]
+
+    # Тикет 19: коды входа в учётные записи → третья группа (владелец и
+    # гендиректор видят, что кто-то пытается войти). Отдельно от ALERT_RULES,
+    # чтобы в БД и отчётах был свой тип login_code. Раньше чёрного списка:
+    # accounts@kontur.ru заглушён целиком, но «Вход в сервис» важен.
+    LOGIN_CODE_RULES: list[str] = [
+        "hotels@account.extranet.ostrovok.ru|код",
+        "hotels@info.mail.emergingtravel.com|код",
+        "notification@info.mail.emergingtravel.com|код",
+        "notification@account.extranet.ostrovok.ru|код",
+        "accounts@kontur.ru|вход",
+        # перенесено из ALERT_RULES (тикет 19): всё про коды/вход — сюда
+        "info@101hotels.com|код для входа",
+        "noreply@travellinemail.com|вход в учетную запись",
+        "mailer@sender.ozon.ru|подтверждение учетных данных",
+        "noreply@telegram.org",
+        "extranet@onetwotrip.com|код",
+    ]
+
+    # Тикет 19: письма, требующие ручной обработки администратором → основная
+    # группа с высоким приоритетом. Раньше чёрного списка и LLM.
+    ADMIN_ATTENTION_RULES: list[str] = [
+        "@v2.hbconnect.ru|заявка на бронирование",
+        "noreply@travellinemail.com|незавершенная бронь",
+        "@bronevik.com|подтвердите выезд",
+        "@info.mail.emergingtravel.com|подтвердите бронирование",
+        "@account.extranet.ostrovok.ru|подтвердите бронирование",
+    ]
+
+    # Тикет 19: отправители входящих счетов без узнаваемого вложения
+    # (охрана, ККТ, хозтовары) → текстовое уведомление в третью группу,
+    # как и письма с вложением-счётом (тикет 10).
+    INCOMING_INVOICE_SENDERS: list[str] = [
+        "cc@delta.ru",
+        "noreply@delta.ru",
+        "informer@delta.ru",
+        "smartsoft.spb@yandex.ru",
+        "kofeman.spb@mail.ru",
+        "zakaz7@cosmipro.ru",
+        "no-reply@lindaily.novoline.spb.ru",
+        # Расчётный отдел TravelLine (тикет 15/19): счета за подписку →
+        # третья группа; письма со вложением-счётом перехватываются документом.
+        "accounting@travelline.ru",
     ]
 
     # База данных
@@ -212,6 +257,40 @@ class Settings(BaseSettings):
         "partner-info@acase.ru",
         "megakatia1@mail.ru",
         "hotelpartner@hrs.com",
+        # Тикет 19 (по corrections.json): дубли и напоминания каналов бронирования,
+        # не требующие действий
+        # ежедневный дайджест TravelLine и анкета гостя (отзывы не рассылаем)
+        "noreply@travellinemail.com|уведомление о бронированиях",
+        "noreply@travellinemail.com|гость заполнил анкету",
+        # Островок: дубли подтверждений и предоплат (новые брони приходят от TravelLine)
+        "hotels@info.mail.emergingtravel.com|новое бронирование",
+        "hotels@account.extranet.ostrovok.ru|новое бронирование",
+        "hotels@info.mail.emergingtravel.com|внесена предоплата",
+        "hotels@account.extranet.ostrovok.ru|внесена предоплата",
+        # Т-Банк: напоминания о заездах и повторные уведомления
+        "hotels_partners@tbank.ru",
+        # Суточно.ру: напоминания о заездах/выездах, предоплаты, просьбы об отзыве
+        "info@sutochno.ru|напоминаем: завтра приезжают гости",
+        "info@sutochno.ru|гость выезжает завтра",
+        "info@sutochno.ru|гость внес предоплату",
+        "info@sutochno.ru|оставить отзыв о госте",
+        # Броневик: напоминания о заездах и дубли заявок
+        "@bronevik.com|напоминание о заезде гостей",
+        "billing@bronevik.online|заявка",
+        # прочие дубли подтверждений от каналов
+        "@acase.ru|бронирование",
+        "24help@mail.personvip.com|подтвердите детали бронирования",
+        # автоматическая переписка контрагентов без действий
+        "SamoilovaSP@cbtc.ru",
+        "reservation@cbtc.ru",
+        "1c_mail@cbtc.ru",
+        "priemspb@pegast.ru",
+        "hotline88007007777@multonpartners.ru",
+        "apartrent@list.ru",
+        # отзывы/жалобы 2ГИС и отчёты рассылок — читаются в ЛК
+        "reviews@2gis.ru",
+        "uk.2gis.support@2gis.ru",
+        "noreply@guest.travelline-mail.com",
     ]
 
 

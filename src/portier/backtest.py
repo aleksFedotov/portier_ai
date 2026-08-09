@@ -52,6 +52,9 @@ _TYPE_COLORS = {
     "yandex_registry": "#cfe2ff",
     "incoming_invoice": "#e2d9f3",
     "kuper_invoice": "#e2d9f3",
+    "alert": "#f5c6cb",
+    "login_code": "#d1ecf1",
+    "admin_attention": "#ffc107",
 }
 
 _TYPE_LABELS = {
@@ -71,6 +74,9 @@ _TYPE_LABELS = {
     "yandex_registry": "Реестр Яндекса",
     "incoming_invoice": "Входящий счёт",
     "kuper_invoice": "Счёт Купера (владельцу)",
+    "alert": "Важный алерт",
+    "login_code": "Код / вход в систему",
+    "admin_attention": "Требуется обработка администратором",
 }
 
 # Типы, которые можно выбрать в разметке «должно быть»
@@ -79,6 +85,7 @@ _MARKABLE_TYPES = [
     "booking_cancelled", "payment_received", "payment_failed",
     "review_notification", "booking_confirmed", "unknown",
     "muted", "owner_notice", "yandex_registry", "incoming_invoice",
+    "alert", "login_code", "admin_attention",
 ]
 
 _SNIPPET_LEN = 300
@@ -104,16 +111,30 @@ def apply_prefilters(settings, sender: str, subject: str, attachments: list[str]
 
     Возвращает псевдо-тип, если письмо перехватывается до LLM, иначе None.
     """
+    addr = _extract_addr(sender)
+    # 1. Важные алерты (овербукинг, госорганы, расчётный отдел TravelLine)
+    if is_alert(sender, subject, settings.ALERT_RULES):
+        return "alert"
+    # 2. Входящие счета: по вложению, затем по известным отправителям
     if any(is_invoice_filename(name) for name in attachments):
-        is_exception = _extract_addr(sender) in {
-            a.lower() for a in settings.INVOICE_OWNER_EXCEPTIONS
-        }
+        is_exception = addr in {a.lower() for a in settings.INVOICE_OWNER_EXCEPTIONS}
         return "kuper_invoice" if is_exception else "incoming_invoice"
-    if is_muted(sender, subject, settings.MUTED_SENDERS):
-        return "muted"
-    if _extract_addr(sender) in {a.lower() for a in settings.OWNER_NOTICE_SENDERS} \
+    if addr in {a.lower() for a in settings.INCOMING_INVOICE_SENDERS}:
+        return "incoming_invoice"
+    # 3. Коды входа в учётные записи
+    if is_alert(sender, subject, settings.LOGIN_CODE_RULES):
+        return "login_code"
+    # 4. Требуется обработка администратором
+    if is_alert(sender, subject, settings.ADMIN_ATTENTION_RULES):
+        return "admin_attention"
+    # 5. Уведомление владельцу (раньше чёрного списка: Купер, МатСервис)
+    if addr in {a.lower() for a in settings.OWNER_NOTICE_SENDERS} \
             or is_alert(sender, subject, settings.OWNER_NOTICE_RULES):
         return "owner_notice"
+    # 6. Чёрный список
+    if is_muted(sender, subject, settings.MUTED_SENDERS):
+        return "muted"
+    # 7. Реестры Яндекс Путешествий
     if is_yandex_registry(sender, subject):
         return "yandex_registry"
     return None
@@ -163,6 +184,21 @@ def load_cache(path: str) -> list[BacktestRow]:
         )
         for d in data
     ]
+
+
+def reapply_filters(rows: list[BacktestRow], settings) -> None:
+    """Пере-применить пред-фильтры к кэшированным строкам (после смены правил).
+
+    Письма, перехваченные новыми правилами, получают псевдо-тип даже если
+    раньше дошли до LLM; обратная ситуация (правила только добавляются)
+    в расчёт не берётся.
+    """
+    for r in rows:
+        if r.error:
+            continue
+        pseudo = apply_prefilters(settings, r.sender, r.subject, [])
+        if pseudo:
+            r.filtered = pseudo
 
 
 # --- HTML-отчёт -------------------------------------------------------------
@@ -479,10 +515,19 @@ def main() -> None:
         "--from-cache", action="store_true",
         help="не ходить в почту/LLM, пересобрать отчёт из кэша",
     )
+    parser.add_argument(
+        "--reapply-filters", action="store_true",
+        help="с --from-cache: пере-применить пред-фильтры к кэшу (после смены правил)",
+    )
     args = parser.parse_args()
     started = datetime.now()
     if args.from_cache:
         rows = load_cache(args.cache)
+        if args.reapply_filters:
+            settings = get_settings()
+            reapply_filters(rows, settings)
+            save_cache(rows, args.cache)
+            logger.info("Пред-фильтры пере-применены, кэш обновлён")
         report = render_report(rows, args.days)
         Path(args.output).write_text(report, encoding="utf-8")
         logger.info("Отчёт из кэша записан: %s (%d писем)", args.output, len(rows))

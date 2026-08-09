@@ -48,7 +48,10 @@ def _settings(tmp_path):
         OWNER_NOTICE_SENDERS=[],
         OWNER_NOTICE_RULES=[],
         ALERT_RULES=[],
+        LOGIN_CODE_RULES=[],
+        ADMIN_ATTENTION_RULES=[],
         INVOICE_OWNER_EXCEPTIONS=[],
+        INCOMING_INVOICE_SENDERS=[],
         INCOMING_INVOICES_CHAT_ID=None,
     )
 
