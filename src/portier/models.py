@@ -38,6 +38,10 @@ class ProcessedEmail(Base):
     error_log: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Путь к сгенерированному PDF счёта (тикет 06: команда /invoices)
     invoice_pdf: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Карточка счёта в чате счетов (тикет 18): нужна, чтобы удалить её,
+    # когда обе кнопки нажаты (счёт отправлен + оплачен)
+    invoice_message_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    invoice_chat_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     actions: Mapped[list["EmailAction"]] = relationship(back_populates="email")
 

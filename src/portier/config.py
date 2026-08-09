@@ -64,6 +64,11 @@ class Settings(BaseSettings):
     # invoice_required + PDF и команда /invoices. Не задан — всё в основной чат.
     INVOICE_CHAT_ID: int | None = None
 
+    # Автоудаление закрытых карточек в чате счетов (тикет 18): карточка
+    # удаляется через столько часов после того, как нажаты обе кнопки
+    # («Счёт отправлен» и «Оплачен»). PDF-документы не трогаем.
+    INVOICE_CARD_TTL_HOURS: int = 24
+
     # Важные алерты → третья группа (правила как в MUTED_SENDERS).
     ALERT_RULES: list[str] = [
         "support@travelline.ru|возможный овербукинг",

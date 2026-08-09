@@ -19,11 +19,16 @@ async def route_notification(
     subject: str,
     body_text: str,
     invoice_note: str | None = None,
-) -> None:
-    """Собрать уведомление по типу письма и отправить администраторам."""
+):
+    """Собрать уведомление по типу письма и отправить администраторам.
+
+    Возвращает отправленное сообщение (тикет 18: message_id карточки счёта
+    нужен для автоудаления закрытых карточек).
+    """
     text, buttons = build_notification(
         result, email_id=email_id, sender=sender, subject=subject,
         body_text=body_text, invoice_note=invoice_note,
     )
-    await send_notification(bot, chat_id, text, buttons)
+    message = await send_notification(bot, chat_id, text, buttons)
     logger.info("Уведомление отправлено: email_id=%s, тип=%s", email_id, result.type)
+    return message

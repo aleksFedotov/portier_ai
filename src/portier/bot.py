@@ -56,12 +56,13 @@ def create_dispatcher() -> Dispatcher:
     return dp
 
 
-async def _send_with_retry(bot: Bot, what: str, send) -> None:
+async def _send_with_retry(bot: Bot, what: str, send):
     """Отправить с retry по экспоненциальному backoff при сетевых сбоях.
 
     send — фабрика корутины (одна корутина на попытку). После исчерпания
     попыток исключение уходит наружу: письмо останется PENDING и будет
-    обработано повторно конвейером.
+    обработано повторно конвейером. Возвращает результат отправки
+    (например, Message — тикет 18: нужен message_id для автоудаления).
     """
     # У настоящего Bot параметры кладёт create_bot; в тестах bot — AsyncMock,
     # там retry отключён (attempts=1).
@@ -74,8 +75,7 @@ async def _send_with_retry(bot: Bot, what: str, send) -> None:
 
     for attempt in range(1, attempts + 1):
         try:
-            await send()
-            return
+            return await send()
         except RETRYABLE_ERRORS as exc:
             if attempt == attempts:
                 raise
@@ -92,9 +92,9 @@ async def send_notification(
     chat_id: int,
     text: str,
     buttons: InlineKeyboardMarkup | None = None,
-) -> None:
-    """Отправить уведомление в группу администраторов."""
-    await _send_with_retry(
+):
+    """Отправить уведомление в группу администраторов. Возвращает Message."""
+    return await _send_with_retry(
         bot, "send_notification",
         lambda: bot.send_message(chat_id=chat_id, text=text, reply_markup=buttons),
     )

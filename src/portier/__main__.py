@@ -8,6 +8,7 @@ from .bot import create_bot, create_dispatcher, polling_with_restart
 from .config import get_settings
 from .db import init_db, init_engine
 from .gmail_client import GmailAuthError, gmail_loop, set_llm_client
+from .invoice_cleanup import invoice_cleanup_loop
 from .llm import create_llm_client
 
 
@@ -67,6 +68,7 @@ async def main() -> None:
             gmail_loop(settings, bot),
             polling_with_restart(dp, bot),
             web_server.serve(),
+            invoice_cleanup_loop(bot, settings),  # тикет 18
         )
     except GmailAuthError as exc:
         raise SystemExit(str(exc))
