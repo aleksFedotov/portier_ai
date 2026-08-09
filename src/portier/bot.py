@@ -36,7 +36,7 @@ def create_bot(
     Параметры retry кладём на инстанс бота, чтобы не таскать settings
     по всем местам отправки (тикет 16).
     """
-    session = AiohttpSession(proxy=proxy, timeout=aiohttp.ClientTimeout(total=timeout))
+    session = AiohttpSession(proxy=proxy, timeout=timeout)
     bot = Bot(
         token=token, session=session,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
