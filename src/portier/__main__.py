@@ -28,6 +28,7 @@ async def main() -> None:
     init_engine(settings.DATABASE_URL)
     await init_db()
 
+    from .agents import seed_agents
     from .db import get_session_factory
     from .web import create_app, seed_companies
 
@@ -35,6 +36,9 @@ async def main() -> None:
     seeded = await seed_companies(session_factory, settings.COMPANIES_SEED_FILE)
     if seeded:
         logging.getLogger(__name__).info("Сид компаний: %d записей", seeded)
+    seeded = await seed_agents(session_factory, settings.AGENTS_SEED_FILE)
+    if seeded:
+        logging.getLogger(__name__).info("Сид агентов: %d записей", seeded)
 
     set_llm_client(create_llm_client(settings))
 

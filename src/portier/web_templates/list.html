@@ -16,13 +16,16 @@
 </head>
 <body>
   <h1>Реестр компаний</h1>
+  <p><b>Компании</b> | <a href="/agents">Агенты</a></p>
   <p><a class="button" href="/companies/new">+ Добавить компанию</a></p>
   <table>
-    <tr><th>Название</th><th>ИНН</th><th>Email</th><th>Шаблон темы</th><th></th></tr>
+    <tr><th>Название</th><th>ИНН</th><th>КПП</th><th>Юр. адрес</th><th>Email</th><th>Шаблон темы</th><th></th></tr>
     {% for c in companies %}
     <tr>
       <td>{{ c.name }}</td>
       <td>{{ c.inn }}</td>
+      <td>{{ c.kpp }}</td>
+      <td>{{ c.legal_address }}</td>
       <td>{{ c.email }}</td>
       <td>{{ c.subject_template }}</td>
       <td>
@@ -34,7 +37,7 @@
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="5">Пока нет ни одной компании.</td></tr>
+    <tr><td colspan="7">Пока нет ни одной компании.</td></tr>
     {% endfor %}
   </table>
 </body>

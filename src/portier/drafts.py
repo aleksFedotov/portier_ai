@@ -43,6 +43,8 @@ def merge_invoice_data(
         invoice = InvoiceDetails(
             company_name=company.name or llm_invoice.company_name,
             inn=company.inn or llm_invoice.inn,
+            kpp=company.kpp or llm_invoice.kpp,
+            legal_address=company.legal_address or llm_invoice.legal_address,
             amount=llm_invoice.amount,
             description=llm_invoice.description,
             arrival_date=llm_invoice.arrival_date,

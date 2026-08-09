@@ -20,6 +20,12 @@
     <label>ИНН
       <input name="inn" value="{{ company.inn if company else '' }}">
     </label>
+    <label>КПП
+      <input name="kpp" value="{{ company.kpp if company else '' }}">
+    </label>
+    <label>Юридический адрес
+      <input name="legal_address" value="{{ company.legal_address if company else '' }}">
+    </label>
     <label>Реквизиты
       <textarea name="details" rows="3">{{ company.details if company else '' }}</textarea>
     </label>

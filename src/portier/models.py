@@ -65,6 +65,28 @@ class Company(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String)
     inn: Mapped[str] = mapped_column(String, default="")
+    kpp: Mapped[str] = mapped_column(String, default="")
+    legal_address: Mapped[str] = mapped_column(String, default="")
     details: Mapped[str] = mapped_column(Text, default="")
     email: Mapped[str] = mapped_column(String, default="")
     subject_template: Mapped[str] = mapped_column(String, default="")
+
+
+class Agent(Base):
+    """Канал-агент (тикет 13): правило «подтверждение брони = счёт» и реквизиты.
+
+    Матчится по алиасам в теме письма / названии канала. Правило работает от
+    справочника, а не от догадок LLM.
+    """
+
+    __tablename__ = "agents"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String)
+    # Алиасы через «;» — как канал выглядит в подтверждениях TravelLine
+    aliases: Mapped[str] = mapped_column(Text, default="")
+    invoice_on_booking: Mapped[bool] = mapped_column(default=True)
+    payer_name: Mapped[str] = mapped_column(String, default="")  # на кого счёт
+    invoice_email: Mapped[str] = mapped_column(String, default="")  # куда слать счёт
+    price_note: Mapped[str] = mapped_column(String, default="")  # «-18% ко всем дням»
+    note: Mapped[str] = mapped_column(Text, default="")

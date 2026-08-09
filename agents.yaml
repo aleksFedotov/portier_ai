@@ -1,0 +1,90 @@
+# Справочник агентов (тикет 13): «счётные» агенты из документа
+# «Работа с агентами». Сидится в БД при пустой таблице agents.
+# aliases — как канал выглядит в подтверждениях TravelLine (через «;»).
+# price_note — подсказка админу (бот цену сам не меняет).
+# invoice_email — куда отправлять счёт (тикет 12); пусто — на адрес из письма.
+
+- name: Pegas
+  aliases: "Pegas;Пегас"
+  invoice_on_booking: true
+  payer_name: ООО «ПЕГАС СПб»
+  invoice_email: priemspb@pegast.ru
+  price_note: цену не меняем
+
+- name: Bronevik
+  aliases: "Bronevik;Броневик"
+  invoice_on_booking: true
+  payer_name: ООО «Компания Броневик»
+  price_note: цену не меняем
+  note: счёт отправлять на email из подтверждения бронирования
+
+- name: HotelBook
+  aliases: "HotelBook"
+  invoice_on_booking: true
+  payer_name: ООО «ХБ-Про»
+  price_note: цену не меняем
+  note: счёт отправлять на адрес, с которого пришла заявка
+
+- name: Cbooking
+  aliases: "Cbooking;Comfortbooking"
+  invoice_on_booking: true
+  payer_name: ООО «СиБукинг-Технолоджи»
+  invoice_email: info@cbooking.ru
+  price_note: -15% ко всем дням
+
+- name: ГЦБиТ
+  aliases: "ГЦБиТ;Городской центр бронирования"
+  invoice_on_booking: true
+  payer_name: ООО «УК ГЦБиТ»
+  invoice_email: reservation@cbtc.ru
+  price_note: цену не меняем
+  note: после выезда — акт с реквизитами на ту же почту
+
+- name: Alean
+  aliases: "Alean;Алеан"
+  invoice_on_booking: true
+  payer_name: ООО «Система Алеан»
+  invoice_email: spb@alean.ru
+  price_note: -20% ко всем дням
+
+- name: ANEX
+  aliases: "ANEX;Анекс"
+  invoice_on_booking: true
+  payer_name: ООО «Анекс Туризм»
+  invoice_email: rus.cost@anextour.com
+  price_note: -15% ко всем дням
+
+- name: Турмашина
+  aliases: "Турмашина;Tourmachine"
+  invoice_on_booking: true
+  payer_name: ООО «ТУРМАШИНА»
+  invoice_email: settlement@tourmachine.ru
+  price_note: -20% ко всем дням
+
+- name: Trivio
+  aliases: "Trivio;Тривио"
+  invoice_on_booking: true
+  payer_name: ООО «Тривио Сервис»
+  invoice_email: invoice@trivio.ru
+  price_note: -18% ко всем дням
+
+- name: Inturist
+  aliases: "Inturist;Интурист;Intourist"
+  invoice_on_booking: true
+  payer_name: ООО «Интурист»
+  invoice_email: Russia@intourist.ru
+  price_note: сумма как в заявке
+
+- name: Альпака (Smartway)
+  aliases: "Smartway;Альпака"
+  invoice_on_booking: true
+  payer_name: ООО «Альпака»
+  invoice_email: hotels_buh@smartway.today
+  price_note: цену не меняем
+
+- name: РЖД
+  aliases: "РЖД-Цифровые;RZD"
+  invoice_on_booking: true
+  payer_name: ООО «РЖД-Цифровые пассажирские решения»
+  invoice_email: reports_travel@smarttravel.ru
+  price_note: -20% ко всем дням

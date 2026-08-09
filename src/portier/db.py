@@ -33,8 +33,35 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 
 
 async def init_db() -> None:
-    """Создать таблицы, если их ещё нет."""
+    """Создать таблицы, если их ещё нет, и дотащить недостающие колонки."""
     if _engine is None:
         raise RuntimeError("Движок БД не инициализирован: вызовите init_engine()")
     async with _engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(_migrate_columns)
+
+
+# Колонки, добавленные после первого релиза: create_all их в существующую
+# таблицу не допишет, поэтому делаем ALTER TABLE вручную (SQLite).
+_NEW_COLUMNS = {
+    "companies": [
+        ("kpp", "VARCHAR DEFAULT ''"),
+        ("legal_address", "VARCHAR DEFAULT ''"),
+    ],
+}
+
+
+def _migrate_columns(sync_conn) -> None:
+    """Добавить недостающие колонки в существующие таблицы (без потери данных)."""
+    if sync_conn.dialect.name != "sqlite":
+        return
+    for table, columns in _NEW_COLUMNS.items():
+        existing = {
+            row[1]
+            for row in sync_conn.exec_driver_sql(f"PRAGMA table_info({table})")
+        }
+        for name, ddl in columns:
+            if name not in existing:
+                sync_conn.exec_driver_sql(
+                    f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"
+                )

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>{{ 'Редактирование агента' if agent else 'Новый агент' }} — Portier AI</title>
+  <style>
+    body { font-family: sans-serif; margin: 24px; color: #212529; }
+    label { display: block; margin-top: 12px; font-weight: bold; }
+    input, textarea { width: 480px; padding: 6px; }
+    input[type=checkbox] { width: auto; }
+    button { margin-top: 16px; padding: 8px 16px; background: #0d6efd;
+             color: #fff; border: 0; border-radius: 4px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>{{ 'Редактирование агента' if agent else 'Новый агент' }}</h1>
+  <form method="post" action="{{ action }}">
+    <label>Название *
+      <input name="name" required value="{{ agent.name if agent else '' }}">
+    </label>
+    <label>Алиасы (через «;») — как канал выглядит в подтверждениях TravelLine
+      <input name="aliases" value="{{ agent.aliases if agent else '' }}"
+             placeholder="Pegas;Пегас">
+    </label>
+    <label>
+      <input name="invoice_on_booking" type="checkbox"
+             {% if agent is none or agent.invoice_on_booking %}checked{% endif %}>
+      Выставлять счёт по каждому подтверждению брони
+    </label>
+    <label>Плательщик (на кого счёт)
+      <input name="payer_name" value="{{ agent.payer_name if agent else '' }}"
+             placeholder="ООО «ПЕГАС СПб»">
+    </label>
+    <label>Email для счёта (пусто — адрес из письма)
+      <input name="invoice_email" type="email"
+             value="{{ agent.invoice_email if agent else '' }}">
+    </label>
+    <label>Корректировка цены (подсказка админу)
+      <input name="price_note" value="{{ agent.price_note if agent else '' }}"
+             placeholder="-18% ко всем дням">
+    </label>
+    <label>Заметки
+      <textarea name="note" rows="3">{{ agent.note if agent else '' }}</textarea>
+    </label>
+    <button type="submit">Сохранить</button>
+  </form>
+  <p><a href="/agents">← К списку</a></p>
+</body>
+</html>

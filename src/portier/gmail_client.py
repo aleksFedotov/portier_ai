@@ -482,6 +482,20 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
             await _notify_error(bot, settings.TELEGRAM_CHAT_ID, record.sender, record.subject, str(exc))
             return
 
+        # Справочник агентов (тикет 13): подтверждение брони от агента с
+        # invoice_on_booking → счёт. Правило работает от справочника, не от LLM.
+        from .agents import match_agent
+        from .schemas import InvoiceDetails
+
+        agent = await match_agent(session, record.subject, result.channel_name)
+        if agent and result.type == "booking_confirmed" and agent.invoice_on_booking:
+            inv = result.invoice or InvoiceDetails()
+            inv.company_name = agent.payer_name or inv.company_name
+            inv.arrival_date = inv.arrival_date or result.arrival_date
+            inv.departure_date = inv.departure_date or result.departure_date
+            result.invoice = inv
+            result.type = "invoice_required"
+
         record.email_type = result.type
         # Внутренний ID TravelLine парсим из тела детерминированно (не через LLM):
         # из него строится номер счёта
@@ -505,7 +519,7 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
 
         try:
             invoice_note = await _prepare_invoice_note(
-                result, settings, gmail, bot, record.sender, session
+                result, settings, gmail, bot, record.sender, session, agent=agent
             )
         except Exception as exc:
             # Сбой PDF/черновика: ERROR в БД + ⚠️ админу, очередь не останавливается
@@ -621,12 +635,15 @@ async def _process_yandex_registry(
 
 
 async def _prepare_invoice_note(
-    result, settings: Settings, gmail: GmailClient, bot, sender: str, session
+    result, settings: Settings, gmail: GmailClient, bot, sender: str, session,
+    agent=None,
 ) -> str | None:
     """Для invoice_required: реестр → PDF → файл в общий чат → текст пометки.
 
     Черновики в Gmail отключены (решение пользователя 08.08.2026): пока счёт
     только уходит в чат на проверку. Черновики/автоотправка — тикет 12.
+    agent — запись справочника агентов (тикет 13): подставляет email для счёта
+    и пометку о корректировке цены.
     """
     if result.type != "invoice_required":
         return None
@@ -639,6 +656,8 @@ async def _prepare_invoice_note(
     # Данные реестра компаний в приоритете над LLM-извлечёнными
     company = await find_company(session, sender, result.invoice)
     data = merge_invoice_data(result, sender, company)
+    if agent is not None and agent.invoice_email:
+        data.to = agent.invoice_email
 
     effective = result.model_copy(update={"invoice": data.invoice})
     pdf_path = generate_invoice_pdf(effective, settings)
@@ -654,6 +673,8 @@ async def _prepare_invoice_note(
     notes = [
         f"📎 Счёт (PDF) отправлен выше — проверьте и отправьте вручную на {data.to}",
     ]
+    if agent is not None and agent.price_note:
+        notes.append(f"💰 Агент {agent.name}: {agent.price_note}")
     missing = invoice_missing_fields(data.invoice)
     if missing:
         notes.append(f"⚠️ Проверьте данные: не заполнены {', '.join(missing)}")
