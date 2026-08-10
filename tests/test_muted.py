@@ -165,3 +165,54 @@ async def test_pipeline_travelline_digest_muted(monkeypatch, tmp_path):
     )
     assert record.status == EmailStatus.SKIPPED.value
     analyze.assert_not_awaited()
+
+
+# ---------- тикет 21: хвост unknown после бэктеста 10.08.2026 ----------
+
+
+def test_ticket21_muted_rules():
+    """Новые глушения: дайджест Platform, закупки, Google-рассылки, баунсы."""
+    settings = Settings(OPENAI_API_KEY="k")
+    rules = settings.MUTED_SENDERS
+    assert is_muted("TravelLine <noreply@travellinemail.com>", "Аналитический отчет TravelLine: Platform для сайта likihotel.com", rules)
+    assert is_muted("Суточно.ру <info@sutochno.ru>", "На ваш баланс поступили средства", rules)
+    assert is_muted("Суточно.ру <info@sutochno.ru>", "🔑 Тук-тук! Кажется, вы не завершили бронирование", rules)
+    assert is_muted("Dobry.market@multonpartners.com", "Мы получили ваш заказ № 1", rules)
+    assert is_muted("KDV Online <info@kdvonline.ru>", "Заказ #RB1308240B передан на доставку", rules)
+    assert is_muted("Google <google-noreply@google.com>", "Мы обновляем Условия использования", rules)
+    assert is_muted("Google Developers <googledevelopers-noreply@google.com>", "[Action Advised] Manage your unused OAuth clients", rules)
+    assert is_muted("2ГИС для бизнеса <noreply@account.2gis.com>", "Ваш клиент ждёт ответа на отзыв", rules)
+    assert is_muted("Mail Delivery Subsystem <mailer-daemon@googlemail.com>", "Delivery Status Notification (Failure)", rules)
+
+
+async def test_pipeline_ostrovok_sverka_owner(monkeypatch, tmp_path):
+    """«Сверка началась» с экстранет-адреса Островка — владельцу (тикет 21)."""
+    _, bot, record, analyze = await _run_pipeline(
+        monkeypatch, tmp_path,
+        '"Островок! Экстранет" <hotels@account.extranet.ostrovok.ru>', "Сверка началась",
+    )
+    assert record.email_type == "owner_notice"
+    analyze.assert_not_awaited()
+    bot.send_message.assert_called_once()
+
+
+async def test_pipeline_kdv_invoice_owner_not_muted(monkeypatch, tmp_path):
+    """Счёт KDV перехватывается владельцем раньше глушения заказов (тикет 21)."""
+    _, bot, record, analyze = await _run_pipeline(
+        monkeypatch, tmp_path,
+        "KDV Online <info@kdvonline.ru>", "Счет на оплату заказа #RB1308240B",
+    )
+    assert record.email_type == "owner_notice"
+    analyze.assert_not_awaited()
+    bot.send_message.assert_called_once()
+
+
+async def test_pipeline_google_security_alert_owner(monkeypatch, tmp_path):
+    """Оповещение безопасности Google — владельцу (тикет 21)."""
+    _, bot, record, analyze = await _run_pipeline(
+        monkeypatch, tmp_path,
+        "Google <no-reply@accounts.google.com>", "Оповещение системы безопасности",
+    )
+    assert record.email_type == "owner_notice"
+    analyze.assert_not_awaited()
+    bot.send_message.assert_called_once()

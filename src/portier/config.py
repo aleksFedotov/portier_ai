@@ -97,6 +97,15 @@ class Settings(BaseSettings):
         "service@matservice.spb.ru|акт сверки",
         "spbzavtrak@gmail.com|сверка",
         "MorozovaAD@cbtc.ru|закрывающ",
+        # Тикет 21 (разбор хвоста unknown после бэктеста 10.08.2026):
+        # сверка Островка с экстранет-адреса (раньше правило было только
+        # для emergingtravel и не матчилось)
+        "hotels@account.extranet.ostrovok.ru|сверка началась",
+        # счёт KDV — только ссылка на сайт, без вложения: просто сообщение
+        # владельцу, в группу счетов не отправляем
+        "info@kdvonline.ru|счет на оплату",
+        # безопасность почтового ящика — владельцу
+        "no-reply@accounts.google.com|оповещение системы безопасности",
     ]
 
     # Исключения из общего правила входящих счетов: их счета идут
@@ -291,6 +300,24 @@ class Settings(BaseSettings):
         "reviews@2gis.ru",
         "uk.2gis.support@2gis.ru",
         "noreply@guest.travelline-mail.com",
+        # Тикет 21 (разбор хвоста unknown после бэктеста 10.08.2026):
+        # аналитический дайджест TravelLine Platform (брони с этого адреса — нужны)
+        "noreply@travellinemail.com|аналитический отчет",
+        # Суточно.ру: пополнения баланса и брошенные бронирования
+        "info@sutochno.ru|на ваш баланс поступили средства",
+        "info@sutochno.ru|не завершили бронирование",
+        # закупки отеля: подтверждения заказов/доставки (счёт KDV — владельцу,
+        # перехватывается OWNER_NOTICE_RULES раньше глушения)
+        "dobry.market@multonpartners.com",
+        "info@kdvonline.ru",
+        # Google: условия использования и советы Developers
+        "google-noreply@google.com",
+        "googledevelopers-noreply@google.com",
+        # 2ГИС «клиент ждёт ответа на отзыв»: реальный адрес noreply@
+        # (в списке был вариант no-reply@ — не матчился)
+        "noreply@account.2gis.com",
+        # баунсы почты
+        "mailer-daemon@googlemail.com",
     ]
 
 
