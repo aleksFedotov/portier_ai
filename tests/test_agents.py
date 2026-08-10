@@ -142,6 +142,7 @@ async def test_agent_booking_becomes_invoice(monkeypatch, tmp_path):
     bot = AsyncMock()
     settings = Settings(
         OPENAI_API_KEY="k", TELEGRAM_CHAT_ID=111,
+        OWNER_CHAT_ID=999,
         DATABASE_URL="sqlite+aiosqlite:///:memory:",
         INVOICES_DIR=str(tmp_path),
     )
@@ -151,7 +152,10 @@ async def test_agent_booking_becomes_invoice(monkeypatch, tmp_path):
         record = (await session.execute(select(ProcessedEmail))).scalars().one()
     assert record.status == EmailStatus.SUCCESS.value
     assert record.email_type == "invoice_required"
-    bot.send_document.assert_awaited()  # PDF счёта в чат
+    # Тикет 22: карточка и PDF счёта — в основную группу, не владельцу и не
+    # в группу счетов
+    assert bot.send_document.await_args.kwargs["chat_id"] == 111
+    assert bot.send_message.await_args.kwargs["chat_id"] == 111
     text = bot.send_message.await_args.kwargs.get("text", "")
     assert "priemspb@pegast.ru" in text  # email агента, а не travellinemail
     assert "цену не меняем" in text  # price_note

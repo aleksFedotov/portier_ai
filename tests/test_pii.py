@@ -55,3 +55,28 @@ def test_unmask_partial_fields():
     assert unmask_pii("Гость [GUEST_1] просит счёт", mapping) == "Гость Иван Петров просит счёт"
     assert unmask_pii(None, mapping) is None
     assert unmask_pii("", mapping) == ""
+
+
+# ---------- даты рождения (тикет 22) ----------
+
+
+def test_birthdates_masked():
+    text = (
+        "Даты рождения проживающих: NIGMATULLINA ALBINA 15.03.1976, "
+        "TYRYSHKINA VERONIKA 04.02.1976"
+    )
+    masked, mapping = mask_pii(text)
+    assert "15.03.1976" not in masked
+    assert "04.02.1976" not in masked
+    bdates = [t for t in mapping if t.startswith("[BDATE_")]
+    assert bdates == ["[BDATE_1]", "[BDATE_2]"]
+    assert unmask_pii(masked, mapping) == text
+
+
+def test_stay_dates_not_masked():
+    """Даты проживания — не ПДн, нужны для счёта: не маскируем."""
+    text = "Проживание с 15.08.2026 по 19.08.2026, заезд 15.08.2026."
+    masked, mapping = mask_pii(text)
+    assert "15.08.2026" in masked
+    assert "19.08.2026" in masked
+    assert not any(t.startswith("[BDATE_") for t in mapping)

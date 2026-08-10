@@ -42,14 +42,6 @@ def _invoices_chat(settings: Settings) -> int | None:
     return settings.INCOMING_INVOICES_CHAT_ID or _owner_chat(settings)
 
 
-def _invoice_chat(settings) -> int | None:
-    """Чат ВЫСТАВЛЯЕМЫХ счетов (тикет 06); не настроен — основной чат.
-
-    getattr: в тестах settings собирается SimpleNamespace-ом без INVOICE_CHAT_ID.
-    """
-    return getattr(settings, "INVOICE_CHAT_ID", None) or settings.TELEGRAM_CHAT_ID
-
-
 # Типы, которые фиксируем в БД без уведомления в Telegram (тикет 15).
 # Исключение — booking_confirmed с комментарием гостя: комментарий нужен
 # администраторам (отдельные письма-комментарии дублируются и молчат).
@@ -670,25 +662,20 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
             await _notify_error(bot, settings.TELEGRAM_CHAT_ID, record.sender, record.subject, str(exc))
             return record.status
 
-        # Тикет 06: счета — в отдельный чат (если настроен), остальное — в основной
-        chat_id = (
-            _invoice_chat(settings)
-            if result.type == "invoice_required"
-            else settings.TELEGRAM_CHAT_ID
-        )
+        # Тикет 22: запросы счетов (invoice_required) — в основную группу
+        # (решение владельца 10.08.2026), как и остальные типы; группа счетов
+        # остаётся для ВХОДЯЩИХ счетов на оплату.
+        chat_id = settings.TELEGRAM_CHAT_ID
         message = await route_notification(
             bot, chat_id, result,
             email_id=record.id, sender=record.sender, subject=record.subject,
             body_text=body_text, invoice_note=invoice_note,
         )
 
-        # Тикет 18: запоминаем карточку счёта, чтобы удалить её после закрытия.
-        # Только когда настроен отдельный чат счетов — в основном чате
-        # карточки не удаляем.
+        # Тикет 18/22: запоминаем карточку счёта, чтобы удалить её после закрытия.
         message_id = getattr(message, "message_id", None)
         if (
             result.type == "invoice_required"
-            and getattr(settings, "INVOICE_CHAT_ID", None) is not None
             and isinstance(message_id, int)
         ):
             record.invoice_message_id = message_id
@@ -813,10 +800,10 @@ async def _prepare_invoice_note(
     result, settings: Settings, gmail: GmailClient, bot, record, session,
     agent=None,
 ) -> str | None:
-    """Для invoice_required: реестр → PDF → файл в чат счетов → текст пометки.
+    """Для invoice_required: реестр → PDF → файл в основную группу → текст пометки.
 
     Черновики в Gmail отключены (решение пользователя 08.08.2026): пока счёт
-    только уходит в чат на проверку. Черновики/автоотправка — тикет 12.
+    только уходит в группу на проверку. Черновики/автоотправка — тикет 12.
     agent — запись справочника агентов (тикет 13): подставляет email для счёта
     и пометку о корректировке цены.
     Путь к PDF сохраняется в record.invoice_pdf (тикет 06: команда /invoices).
@@ -843,14 +830,14 @@ async def _prepare_invoice_note(
 
     await send_document(
         bot,
-        _invoice_chat(settings),
+        settings.TELEGRAM_CHAT_ID,
         filename=pdf_path.name,
         data=pdf_path.read_bytes(),
         caption=f"📎 Счёт для {data.to} — проверьте перед отправкой",
     )
 
     notes = [
-        f"📎 Счёт (PDF) отправлен выше — проверьте и отправьте вручную на {data.to}",
+        f"📎 Счёт для {data.to} — проверьте перед отправкой",
     ]
     if agent is not None and agent.price_note:
         notes.append(f"💰 Агент {agent.name}: {agent.price_note}")
