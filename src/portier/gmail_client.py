@@ -25,7 +25,7 @@ from .handlers.templates import esc
 from .bot import send_document, send_notification
 from .llm import analyze_email
 from .incoming import DOC_SUFFIXES, is_alert, is_invoice_filename
-from .models import EmailStatus, ProcessedEmail
+from .models import ActionLog, ActionLogStatus, EmailStatus, ProcessedEmail
 from .muted import _extract_addr, is_muted
 from .yandex_registry import is_yandex_registry
 
@@ -437,6 +437,49 @@ def cursor_after_seconds(last_uid: int | None) -> int | None:
     return max(last_uid // 1000 - 2, 0)
 
 
+async def _run_action(session, email_id: int, action_type: str, fn) -> bool:
+    """Идемпотентное внешнее действие (тикет 23).
+
+    Ключ идемпотентности — (email_id, action_type): если SUCCESS-лог уже есть,
+    fn не выполняется (действие не дублируется при повторной обработке PENDING)
+    и возвращается False. Иначе выполняем fn(), пишем SUCCESS-лог; при
+    исключении — FAILED-лог с текстом ошибки и пробрасываем исключение дальше
+    (письмо остаётся PENDING и будет обработано повторно).
+
+    fn — callable без аргументов, возвращающий awaitable.
+    """
+    log = (await session.execute(
+        select(ActionLog).where(
+            ActionLog.email_id == email_id,
+            ActionLog.action_type == action_type,
+        )
+    )).scalar_one_or_none()
+    if log is not None and log.status == ActionLogStatus.SUCCESS.value:
+        logger.info("Действие %s по письму %s уже выполнено — пропуск", action_type, email_id)
+        return False
+    try:
+        await fn()
+    except Exception as exc:
+        if log is None:
+            log = ActionLog(email_id=email_id, action_type=action_type)
+            session.add(log)
+        else:
+            log.attempts += 1
+        log.status = ActionLogStatus.FAILED.value
+        log.error_message = f"{type(exc).__name__}: {exc}"
+        await session.commit()
+        raise
+    if log is None:
+        log = ActionLog(email_id=email_id, action_type=action_type)
+        session.add(log)
+    else:
+        log.attempts += 1
+    log.status = ActionLogStatus.SUCCESS.value
+    log.error_message = None
+    await session.commit()
+    return True
+
+
 async def _notify_error(bot, chat_id: int, sender: str, subject: str, error: str) -> None:
     """Предупредить администраторов о письме, которое не удалось обработать."""
     from .bot import send_notification
@@ -512,29 +555,49 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
 
         body_text = await gmail.fetch_body_text(gmail_id)
 
-        record = ProcessedEmail(
-            message_id=message_id,
-            uid=uid,
-            sender=headers["sender"],
-            subject=headers["subject"],
-            received_at=_parse_date(headers["date"]),
-            processed_at=datetime.utcnow(),
-            raw_payload=body_text,
-            status=EmailStatus.PENDING.value,
-        )
-        session.add(record)
-        await session.commit()
-        await session.refresh(record)
+        # Повторная обработка зависшего PENDING (тикет 23): запись с этим
+        # message_id уже есть — обновляем её, а не создаём новую (message_id
+        # уникален, вставка упала бы на IntegrityError). Вместе с журналом
+        # action_logs это убирает дубли отправок в Telegram.
+        record = (await session.execute(
+            select(ProcessedEmail).where(ProcessedEmail.message_id == message_id)
+        )).scalar_one_or_none()
+        if record is not None:
+            record.uid = uid
+            record.sender = headers["sender"]
+            record.subject = headers["subject"]
+            record.received_at = _parse_date(headers["date"])
+            record.processed_at = datetime.utcnow()
+            record.raw_payload = body_text
+            record.error_log = None
+            await session.commit()
+        else:
+            record = ProcessedEmail(
+                message_id=message_id,
+                uid=uid,
+                sender=headers["sender"],
+                subject=headers["subject"],
+                received_at=_parse_date(headers["date"]),
+                processed_at=datetime.utcnow(),
+                raw_payload=body_text,
+                status=EmailStatus.PENDING.value,
+            )
+            session.add(record)
+            await session.commit()
+            await session.refresh(record)
 
         # Важные алерты (тикет 10): текстовое уведомление в третью группу.
         # Идёт раньше глушения — овербукинг важнее рассылок TravellLine.
         if is_alert(record.sender, record.subject, settings.ALERT_RULES):
             record.email_type = "alert"
-            await send_notification(
-                bot, _invoices_chat(settings),
+            text = (
                 "🚨 <b>Важное уведомление</b>\n\n"
                 f"📧 От: {esc(record.sender)}\n"
-                f"📌 Тема: {esc(record.subject)}",
+                f"📌 Тема: {esc(record.subject)}"
+            )
+            await _run_action(
+                session, record.id, "alert_notice",
+                lambda: send_notification(bot, _invoices_chat(settings), text),
             )
             record.status = EmailStatus.SUCCESS.value
             await session.commit()
@@ -550,11 +613,14 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
         # но «Вход в сервис» владелец должен видеть.
         if is_alert(record.sender, record.subject, settings.LOGIN_CODE_RULES):
             record.email_type = "login_code"
-            await send_notification(
-                bot, _invoices_chat(settings),
+            text = (
                 "🔑 <b>Код / вход в учётную запись</b>\n\n"
                 f"📧 От: {esc(record.sender)}\n"
-                f"📌 Тема: {esc(record.subject)}",
+                f"📌 Тема: {esc(record.subject)}"
+            )
+            await _run_action(
+                session, record.id, "login_notice",
+                lambda: send_notification(bot, _invoices_chat(settings), text),
             )
             record.status = EmailStatus.SUCCESS.value
             await session.commit()
@@ -565,11 +631,14 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
         # основная группа. Раньше глушения и LLM.
         if is_alert(record.sender, record.subject, settings.ADMIN_ATTENTION_RULES):
             record.email_type = "admin_attention"
-            await send_notification(
-                bot, settings.TELEGRAM_CHAT_ID,
+            text = (
                 "🛎 <b>Требуется обработка администратором</b>\n\n"
                 f"📧 От: {esc(record.sender)}\n"
-                f"📌 Тема: {esc(record.subject)}",
+                f"📌 Тема: {esc(record.subject)}"
+            )
+            await _run_action(
+                session, record.id, "admin_attention_notice",
+                lambda: send_notification(bot, settings.TELEGRAM_CHAT_ID, text),
             )
             record.status = EmailStatus.SUCCESS.value
             await session.commit()
@@ -582,11 +651,14 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
         if _extract_addr(record.sender) in {a.lower() for a in settings.OWNER_NOTICE_SENDERS} \
                 or is_alert(record.sender, record.subject, settings.OWNER_NOTICE_RULES):
             record.email_type = "owner_notice"
-            await send_notification(
-                bot, _owner_chat(settings),
+            text = (
                 "📄 <b>Документ для ручной обработки</b>\n\n"
                 f"📧 От: {esc(record.sender)}\n"
-                f"📌 Тема: {esc(record.subject)}",
+                f"📌 Тема: {esc(record.subject)}"
+            )
+            await _run_action(
+                session, record.id, "owner_notice",
+                lambda: send_notification(bot, _owner_chat(settings), text),
             )
             record.status = EmailStatus.SUCCESS.value
             await session.commit()
@@ -604,15 +676,23 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
             await _process_yandex_registry(gmail, bot, settings, gmail_id, record, session)
             return record.status
 
-        try:
-            result, mapping = await analyze_body(settings, record.sender, record.subject, body_text)
-        except Exception as exc:
-            logger.exception("LLM не смогла обработать письмо %s", gmail_id)
-            record.status = EmailStatus.ERROR.value
-            record.error_log = f"{type(exc).__name__}: {exc}"
-            await session.commit()
-            await _notify_error(bot, settings.TELEGRAM_CHAT_ID, record.sender, record.subject, str(exc))
-            return record.status
+        if record.llm_result:
+            # Повторная обработка PENDING (тикет 23): LLM уже отработала —
+            # берём сохранённый результат, не тратя повторный вызов.
+            from .schemas import EmailAnalysisResult
+
+            result = EmailAnalysisResult.model_validate(record.llm_result)
+            mapping = record.pii_map or {}
+        else:
+            try:
+                result, mapping = await analyze_body(settings, record.sender, record.subject, body_text)
+            except Exception as exc:
+                logger.exception("LLM не смогла обработать письмо %s", gmail_id)
+                record.status = EmailStatus.ERROR.value
+                record.error_log = f"{type(exc).__name__}: {exc}"
+                await session.commit()
+                await _notify_error(bot, settings.TELEGRAM_CHAT_ID, record.sender, record.subject, str(exc))
+                return record.status
 
         # Справочник агентов (тикет 13): подтверждение брони от агента с
         # invoice_on_booking → счёт. Правило работает от справочника, не от LLM.
@@ -666,11 +746,19 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
         # (решение владельца 10.08.2026), как и остальные типы; группа счетов
         # остаётся для ВХОДЯЩИХ счетов на оплату.
         chat_id = settings.TELEGRAM_CHAT_ID
-        message = await route_notification(
-            bot, chat_id, result,
-            email_id=record.id, sender=record.sender, subject=record.subject,
-            body_text=body_text, invoice_note=invoice_note,
-        )
+        sent: dict = {}
+
+        async def _send_card():
+            sent["message"] = await route_notification(
+                bot, chat_id, result,
+                email_id=record.id, sender=record.sender, subject=record.subject,
+                body_text=body_text, invoice_note=invoice_note,
+            )
+
+        await _run_action(session, record.id, "notify_card", _send_card)
+        # При пропуске (повторная обработка) message=None — карточка уже в чате,
+        # invoice_message_id был сохранён при первой отправке.
+        message = sent.get("message")
 
         # Тикет 18/22: запоминаем карточку счёта, чтобы удалить её после закрытия.
         message_id = getattr(message, "message_id", None)
@@ -715,11 +803,14 @@ async def _process_incoming_invoice(
             a.lower() for a in settings.INCOMING_INVOICE_SENDERS
         }:
             record.email_type = "incoming_invoice"
-            await send_notification(
-                bot, _invoices_chat(settings),
+            text = (
                 "🧾 <b>Входящий счёт</b>\n\n"
                 f"📧 От: {esc(record.sender)}\n"
-                f"📌 Тема: {esc(record.subject)}",
+                f"📌 Тема: {esc(record.subject)}"
+            )
+            await _run_action(
+                session, record.id, "incoming_invoice_docs",
+                lambda: send_notification(bot, _invoices_chat(settings), text),
             )
             record.status = EmailStatus.SUCCESS.value
             await session.commit()
@@ -734,7 +825,12 @@ async def _process_incoming_invoice(
     caption = f"📧 От: {esc(record.sender)}\n📌 Тема: {esc(record.subject)}"
 
     for filename, data in attachments:
-        await send_document(bot, chat_id, filename, data, caption=caption)
+        # Идемпотентность по каждому файлу (тикет 23): при падении посреди
+        # цикла повторная обработка дошлёт только неотправленные вложения.
+        await _run_action(
+            session, record.id, f"incoming_invoice_docs:{filename}",
+            lambda f=filename, d=data: send_document(bot, chat_id, f, d, caption=caption),
+        )
 
     record.status = EmailStatus.SUCCESS.value
     await session.commit()
@@ -789,8 +885,9 @@ async def _process_yandex_registry(
     }
     await session.commit()
 
-    await send_notification(
-        bot, _owner_chat(settings), build_registry_notification(report)
+    await _run_action(
+        session, record.id, "yandex_registry_notice",
+        lambda: send_notification(bot, _owner_chat(settings), build_registry_notification(report)),
     )
     record.status = EmailStatus.SUCCESS.value
     await session.commit()
@@ -828,16 +925,23 @@ async def _prepare_invoice_note(
     record.invoice_pdf = str(pdf_path)
     await session.commit()
 
-    await send_document(
-        bot,
-        settings.TELEGRAM_CHAT_ID,
-        filename=pdf_path.name,
-        data=pdf_path.read_bytes(),
-        caption=f"📎 Счёт для {data.to} — проверьте перед отправкой",
+    caption = f"📎 Счёт для {data.to} — проверьте перед отправкой"
+    # Под идемпотентностью (тикет 23) — только отправка: PDF перегенерируется
+    # (файл перезаписывается), текст пометки строится в любом случае — он нужен
+    # для карточки при повторной обработке.
+    await _run_action(
+        session, record.id, "invoice_pdf_document",
+        lambda: send_document(
+            bot,
+            settings.TELEGRAM_CHAT_ID,
+            filename=pdf_path.name,
+            data=pdf_path.read_bytes(),
+            caption=caption,
+        ),
     )
 
     notes = [
-        f"📎 Счёт для {data.to} — проверьте перед отправкой",
+        caption,
     ]
     if agent is not None and agent.price_note:
         notes.append(f"💰 Агент {agent.name}: {agent.price_note}")

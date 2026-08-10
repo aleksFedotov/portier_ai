@@ -63,6 +63,36 @@ class EmailAction(Base):
     email: Mapped[ProcessedEmail] = relationship(back_populates="actions")
 
 
+class ActionLogStatus(str, enum.Enum):
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+
+
+class ActionLog(Base):
+    """Журнал внешних действий по письму (тикет 23): идемпотентность + история.
+
+    Ключ идемпотентности — (email_id, action_type): при повторной обработке
+    зависшего PENDING действие с SUCCESS-логом не выполняется повторно,
+    поэтому PDF/карточки не уходят в Telegram дублем.
+    """
+
+    __tablename__ = "action_logs"
+    __table_args__ = (
+        UniqueConstraint("email_id", "action_type", name="uq_action_log"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email_id: Mapped[int] = mapped_column(ForeignKey("processed_emails.id"))
+    action_type: Mapped[str] = mapped_column(String)  # notify_card / invoice_pdf_document / ...
+    status: Mapped[str] = mapped_column(String, default=ActionLogStatus.FAILED.value)
+    attempts: Mapped[int] = mapped_column(Integer, default=1)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+
 class Company(Base):
     """Компания-заказчик: реквизиты для счетов и шаблон темы письма."""
 
