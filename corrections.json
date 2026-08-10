@@ -1292,8 +1292,8 @@
   "sender": "\"Илья Мартышкин\" <zakupkiyalagrokoll@mail.ru>",
   "subject": "Re[2]: Бронирование отеля",
   "current_type": "invoice_required",
-  "expected_type": "invoice_required",
-  "comment": "переразмечено 10.08: тред про счёт/акт, принято"
+  "expected_type": "guest_message",
+  "comment": "переразмечено 10.08 (тикет 25): ответы в треде — не автосчёт"
  },
  {
   "gmail_id": "19f40a419e346548",

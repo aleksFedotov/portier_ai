@@ -13,6 +13,7 @@ import base64
 import email.utils
 import logging
 import os
+import re
 from datetime import datetime, timedelta
 
 from sqlalchemy import func, select
@@ -54,6 +55,18 @@ SILENT_TYPES = frozenset({
     "review_notification",
     "unknown",
 })
+
+# Тикет 25: ответ в треде (Re:/Fwd:) — живая переписка человека, а не
+# письмо-заявка канала. Автосчета из таких писем не выставляем (решение
+# владельца 10.08.2026): invoice_required и booking_comment из ответов
+# понижаем до guest_message — карточка уходит админам, PDF не генерится.
+_REPLY_SUBJECT_RE = re.compile(r"^\s*(re(\[\d+\])?|fwd?)\s*:", re.IGNORECASE)
+_REPLY_DOWNGRADE_TYPES = frozenset({"invoice_required", "booking_comment"})
+
+
+def _is_reply_subject(subject: str) -> bool:
+    """Тема — ответ/пересылка в треде: «Re:», «Re[2]:», «Fwd:», «FW: …»."""
+    return bool(_REPLY_SUBJECT_RE.match(subject or ""))
 
 # Метка «письмо обработано ботом» (тикет 14). Выборка строится по ней,
 # а не по непрочитанности: прочитанное сотрудником письмо всё равно обработается.
@@ -707,6 +720,14 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
             inv.departure_date = inv.departure_date or result.departure_date
             result.invoice = inv
             result.type = "invoice_required"
+
+        # Тикет 25: ответы в треде — не автосчёт и не «комментарий к брони».
+        if _is_reply_subject(record.subject) and result.type in _REPLY_DOWNGRADE_TYPES:
+            logger.info(
+                "Письмо %s — ответ в треде (%s): тип %s понижен до guest_message",
+                gmail_id, record.subject, result.type,
+            )
+            result.type = "guest_message"
 
         record.email_type = result.type
         # Внутренний ID TravelLine парсим из тела детерминированно (не через LLM):
