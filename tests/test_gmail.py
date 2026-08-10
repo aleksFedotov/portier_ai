@@ -20,13 +20,17 @@ def _b64(text: str) -> str:
 def test_build_query_backlog():
     query = build_query(None, 7)
     assert query.startswith("after:")
-    assert query.endswith(" category:primary -label:portier-processed")
+    assert query.endswith(
+        " -category:promotions -category:social -category:forums "
+        "-label:portier-processed"
+    )
     assert int(query.split(":")[1].split()[0]) > 0
 
 
 def test_build_query_cursor():
     assert build_query(1700000000, 7) == (
-        "after:1700000000 category:primary -label:portier-processed"
+        "after:1700000000 -category:promotions -category:social "
+        "-category:forums -label:portier-processed"
     )
 
 

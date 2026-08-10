@@ -23,7 +23,7 @@ from .config import Settings
 from .db import get_session_factory
 from .handlers.router import route_notification
 from .handlers.templates import esc
-from .bot import send_document, send_notification
+from .bot import RETRYABLE_ERRORS, send_document, send_notification
 from .llm import analyze_email
 from .incoming import DOC_SUFFIXES, is_alert, is_invoice_filename
 from .models import ActionLog, ActionLogStatus, EmailStatus, ProcessedEmail
@@ -80,6 +80,11 @@ ALREADY_PROCESSED = "already_processed"
 LABEL_OK_STATUSES = frozenset({
     EmailStatus.SUCCESS.value, EmailStatus.SKIPPED.value, ALREADY_PROCESSED,
 })
+
+# Тикет 26: сколько раз переотправляем счёт при сетевом сбое Telegram,
+# прежде чем сдаться (ERROR + алерт админам). Попытка = цикл опроса,
+# внутри неё ещё 4 retry (тикет 16).
+MAX_INVOICE_ACTION_ATTEMPTS = 10
 
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
@@ -182,8 +187,10 @@ def extract_body_from_payload(payload: dict) -> str:
 def build_query(after_epoch_seconds: int | None, backlog_days: int) -> str:
     """Поисковый запрос Gmail: письма после курсора либо за глубину backlog.
 
-    category:primary — только вкладка «Основные»: промоакции, соцсети,
-    оповещения и форумы пропускаем ещё на стороне Gmail, не тратя запросы к LLM.
+    Минусуем только явный мусор (промоакции, соцсети, форумы), а НЕ
+    ограничиваемся category:primary (тикет 26): Gmail может перенести
+    письмо канала во вкладку «Оповещения» (CATEGORY_UPDATES) задним числом,
+    и тогда оно выпадает из выборки — живой случай с подтверждением Bronevik.
     -label:portier-processed — без метки «обработано» (тикет 14): прочитанность
     письма значения не имеет, повторно обработанные не приходят.
     """
@@ -191,7 +198,11 @@ def build_query(after_epoch_seconds: int | None, backlog_days: int) -> str:
         after_epoch_seconds = int(
             (datetime.now() - timedelta(days=backlog_days)).timestamp()
         )
-    return f"after:{after_epoch_seconds} category:primary -label:{PROCESSED_LABEL}"
+    return (
+        f"after:{after_epoch_seconds} "
+        f"-category:promotions -category:social -category:forums "
+        f"-label:{PROCESSED_LABEL}"
+    )
 
 
 def in_quiet_hours(now: datetime, start: int, end: int) -> bool:
@@ -414,6 +425,21 @@ class GmailClient:
 async def get_last_uid(session) -> int | None:
     """Курсор: максимальный internalDate (мс) обработанного письма (None — база пуста)."""
     result = await session.execute(select(func.max(ProcessedEmail.uid)))
+    return result.scalar_one_or_none()
+
+
+async def get_oldest_pending_uid(session) -> int | None:
+    """Uid самого старого PENDING-письма (тикет 26).
+
+    Зависшее PENDING-письмо старше основного курсора иначе никогда не вернётся
+    из Gmail-выборки: окно after: двигается вперёд, а метки portier-processed
+    на нём нет — окно должно его захватывать.
+    """
+    result = await session.execute(
+        select(func.min(ProcessedEmail.uid)).where(
+            ProcessedEmail.status == EmailStatus.PENDING.value
+        )
+    )
     return result.scalar_one_or_none()
 
 
@@ -755,7 +781,24 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
                 result, settings, gmail, bot, record, session, agent=agent
             )
         except Exception as exc:
-            # Сбой PDF/черновика: ERROR в БД + ⚠️ админу, очередь не останавливается
+            # Тикет 26: сетевой сбой Telegram — не ERROR, а пауза. Письмо
+            # остаётся PENDING: следующий цикл доотправит счёт сам (LLM не
+            # вызовется — тикет 23). Сдаёмся после MAX_INVOICE_ACTION_ATTEMPTS.
+            if isinstance(exc, RETRYABLE_ERRORS):
+                attempts = (await session.execute(
+                    select(ActionLog.attempts).where(
+                        ActionLog.email_id == record.id,
+                        ActionLog.action_type == "invoice_pdf_document",
+                    )
+                )).scalar() or 0
+                if attempts < MAX_INVOICE_ACTION_ATTEMPTS:
+                    logger.warning(
+                        "Счёт по письму %s не отправлен (%s), попытка %d/%d — "
+                        "остаётся PENDING, повторим в следующем цикле",
+                        gmail_id, exc, attempts, MAX_INVOICE_ACTION_ATTEMPTS,
+                    )
+                    return record.status  # PENDING
+            # Логическая ошибка или исчерпаны попытки: ERROR в БД + ⚠️ админу
             logger.exception("Не удалось подготовить счёт по письму %s", gmail_id)
             record.status = EmailStatus.ERROR.value
             record.error_log = f"{type(exc).__name__}: {exc}"
@@ -998,8 +1041,14 @@ async def check_once(gmail: GmailClient, bot, settings: Settings) -> None:
     session_factory = get_session_factory()
     async with session_factory() as session:
         last_uid = await get_last_uid(session)
+        pending_uid = await get_oldest_pending_uid(session)
 
     after = cursor_after_seconds(last_uid)
+    if pending_uid:
+        # Тикет 26: окно опускаем до самого старого PENDING — иначе зависшие
+        # письма (сетевой сбой и т.п.) навсегда выпадают из выборки Gmail.
+        pending_after = cursor_after_seconds(pending_uid)
+        after = pending_after if after is None else min(after, pending_after)
     ids = await gmail.list_new_message_ids(after, settings.BACKLOG_DAYS)
     logger.info("Найдено новых писем: %d (курсор: %s)", len(ids), last_uid)
 

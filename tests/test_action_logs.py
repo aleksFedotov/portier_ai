@@ -138,3 +138,89 @@ async def test_reprocess_no_duplicates(monkeypatch, tmp_path):
     assert logs["notify_card"].attempts == 2
     assert logs["notify_card"].error_message is None
     assert logs["invoice_pdf_document"].attempts == 1
+
+
+async def test_invoice_network_failure_stays_pending(monkeypatch, tmp_path):
+    """Тикет 26: сетевой сбой при отправке PDF — письмо остаётся PENDING,
+    алерта об ошибке нет; при повторном прогоне счёт доотправляется."""
+    import aiohttp
+
+    init_engine("sqlite+aiosqlite:///:memory:")
+    await init_db()
+    analyze = AsyncMock(return_value=_invoice_result())
+    monkeypatch.setattr(gmail_client, "analyze_email", analyze)
+    bot = AsyncMock()
+    bot.send_document.side_effect = aiohttp.ClientError("нет связи")
+
+    status = await gmail_client.process_email(_gmail(), bot, _settings(tmp_path), "gmail-id-1")
+
+    assert status == EmailStatus.PENDING.value
+    record = (await _records(ProcessedEmail))[0]
+    assert record.status == EmailStatus.PENDING.value
+    # Алерт «не удалось обработать» НЕ уходит — это временный сбой
+    bot.send_message.assert_not_called()
+    logs = {l.action_type: l for l in await _records(ActionLog)}
+    assert logs["invoice_pdf_document"].status == "FAILED"
+    assert "нет связи" in logs["invoice_pdf_document"].error_message
+
+    # Связь восстановлена: повторный прогон доотправляет счёт без повторного LLM
+    bot.send_document.side_effect = None
+    status = await gmail_client.process_email(_gmail(), bot, _settings(tmp_path), "gmail-id-1")
+    assert status == EmailStatus.SUCCESS.value
+    assert analyze.await_count == 1
+    assert bot.send_document.await_count == 2
+
+
+async def test_invoice_network_failure_gives_up(monkeypatch, tmp_path):
+    """Тикет 26: после MAX_INVOICE_ACTION_ATTEMPTS неудач — ERROR + алерт админу."""
+    import aiohttp
+
+    init_engine("sqlite+aiosqlite:///:memory:")
+    await init_db()
+    monkeypatch.setattr(gmail_client, "analyze_email", AsyncMock(return_value=_invoice_result()))
+    bot = AsyncMock()
+    bot.send_document.side_effect = aiohttp.ClientError("нет связи")
+
+    settings = _settings(tmp_path)
+    # Доводим счётчик попыток до предела: прогоняем сбой столько раз,
+    # сколько осталось до границы (первый прогон создаст лог с attempts=1)
+    for _ in range(gmail_client.MAX_INVOICE_ACTION_ATTEMPTS):
+        status = await gmail_client.process_email(_gmail(), bot, settings, "gmail-id-1")
+
+    assert status == EmailStatus.ERROR.value
+    record = (await _records(ProcessedEmail))[0]
+    assert record.status == EmailStatus.ERROR.value
+    assert "нет связи" in (record.error_log or "")
+    # Финальный алерт админам ушёл
+    error_texts = [
+        c.kwargs.get("text", "") for c in bot.send_message.await_args_list
+    ]
+    assert any("Не удалось обработать письмо" in t for t in error_texts)
+    logs = {l.action_type: l for l in await _records(ActionLog)}
+    assert logs["invoice_pdf_document"].attempts == gmail_client.MAX_INVOICE_ACTION_ATTEMPTS
+
+
+async def test_check_once_window_covers_pending(monkeypatch, tmp_path):
+    """Тикет 26: окно выборки опускается до самого старого PENDING-письма,
+    даже если основной курсор (max uid) ушёл далеко вперёд."""
+    init_engine("sqlite+aiosqlite:///:memory:")
+    await init_db()
+    async with get_session_factory()() as session:
+        session.add(ProcessedEmail(
+            message_id="<old@x>", uid=1_000_000, status=EmailStatus.PENDING.value,
+        ))
+        session.add(ProcessedEmail(
+            message_id="<new@x>", uid=9_000_000_000, status=EmailStatus.SUCCESS.value,
+        ))
+        await session.commit()
+
+    gmail = SimpleNamespace(
+        list_new_message_ids=AsyncMock(return_value=[]),
+        mark_processed=AsyncMock(),
+    )
+    settings = _settings(tmp_path)
+    await gmail_client.check_once(gmail, AsyncMock(), settings)
+
+    after = gmail.list_new_message_ids.await_args.args[0]
+    # Окно должно быть по PENDING (uid 1_000_000 мс − 2 с), а не по max uid
+    assert after == 1_000_000 // 1000 - 2
