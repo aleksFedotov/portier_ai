@@ -7,6 +7,8 @@
 Отчёт — интерактивный HTML: фильтры по типам, поиск, разметка неверных
 строк с выгрузкой corrections.json. Сырые результаты прогона кэшируются
 (JSON), отчёт можно пересобрать из кэша без повторного прогона LLM.
+Если рядом есть corrections.json (ручная разметка владельца), бэктест
+сверяет свежие типы с ожидаемыми и показывает сводку в шапке отчёта.
 
 Использование:
   python -m portier.backtest --days 45 --output report.html
@@ -19,7 +21,7 @@ import html
 import json
 import logging
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -90,6 +92,7 @@ _MARKABLE_TYPES = [
 
 _SNIPPET_LEN = 300
 _DEFAULT_CACHE = "data/backtest_cache.json"
+_DEFAULT_CORRECTIONS = "corrections.json"
 
 
 @dataclass
@@ -201,6 +204,96 @@ def reapply_filters(rows: list[BacktestRow], settings) -> None:
             r.filtered = pseudo
 
 
+# --- Сверка с ручной разметкой (corrections.json) ---------------------------
+
+
+@dataclass
+class CorrectionCheck:
+    """Результат сверки одного размеченного письма с выборкой бэктеста."""
+
+    expected: str
+    actual: str
+    matched: bool
+
+
+@dataclass
+class CorrectionsReport:
+    """Сводная статистика сверки разметки с результатами бэктеста."""
+
+    total: int = 0        # всего записей в corrections (после нормализации)
+    found: int = 0        # размеченные письма, найденные в выборке
+    matched: int = 0      # из найденных — тип совпал с ожидаемым
+    missing: int = 0      # размеченные письма, которых нет в выборке
+    checks: dict[str, CorrectionCheck] = field(default_factory=dict)  # gmail_id -> результат сверки
+
+    @property
+    def mismatched(self) -> int:
+        return self.found - self.matched
+
+
+# Подстроки старых комментариев → типы, появившиеся после разметки (тикет 19)
+_COMMENT_TO_TYPE = (
+    ("коды и вход в систему", "login_code"),
+    ("требуется обработка администратором", "admin_attention"),
+)
+
+
+def load_corrections(path: str) -> dict[str, str]:
+    """Прочитать corrections.json: gmail_id -> ожидаемый тип.
+
+    Записи с пустым expected_type нормализуются по комментарию
+    («коды и вход в систему» → login_code, «требуется обработка
+    администратором» → admin_attention); без известного комментария —
+    пропускаются.
+    """
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    corrections: dict[str, str] = {}
+    for item in data:
+        gid = item.get("gmail_id") or ""
+        expected = (item.get("expected_type") or "").strip()
+        if not expected:
+            comment = (item.get("comment") or "").lower()
+            for marker, ctype in _COMMENT_TO_TYPE:
+                if marker in comment:
+                    expected = ctype
+                    break
+        if gid and expected:
+            corrections[gid] = expected
+    logger.info("Разметка загружена: %s (%d записей)", path, len(corrections))
+    return corrections
+
+
+def check_corrections(
+    rows: list[BacktestRow], corrections: dict[str, str]
+) -> CorrectionsReport:
+    """Сверить свежие типы писем с ручной разметкой по gmail_id.
+
+    Актуальный тип — псевдо-тип пред-фильтра или тип от LLM; строки с
+    ошибкой считаются расхождением (actual="error").
+    """
+    by_gid = {r.gmail_id: r for r in rows if r.gmail_id}
+    report = CorrectionsReport(total=len(corrections))
+    for gid, expected in corrections.items():
+        row = by_gid.get(gid)
+        if row is None:
+            report.missing += 1
+            continue
+        if row.error:
+            actual = "error"
+        else:
+            actual = row.filtered or (row.result.type if row.result else "error")
+        report.found += 1
+        matched = actual == expected
+        if matched:
+            report.matched += 1
+        report.checks[gid] = CorrectionCheck(expected=expected, actual=actual, matched=matched)
+    logger.info(
+        "Сверка с разметкой: совпало %d из %d, расхождений %d, не найдено %d",
+        report.matched, report.found, report.mismatched, report.missing,
+    )
+    return report
+
+
 # --- HTML-отчёт -------------------------------------------------------------
 
 _REPORT_CSS = """
@@ -215,6 +308,8 @@ th{padding:6px 10px;border:1px solid #ccc;background:#343a40;color:#fff;position
 td{padding:6px 10px;border:1px solid #ccc;vertical-align:top}
 tr.day-sep td{background:#dee2e6;font-weight:bold;cursor:pointer}
 tr.marked{outline:3px solid #dc3545}
+tr.mismatch{outline:3px solid #dc3545}
+.expected-hint{color:#842029;font-size:11px;margin-top:2px}
 .gid{color:#6c757d;font-size:11px}
 select.expect{max-width:170px}
 input.note{width:150px;margin-top:2px}
@@ -223,7 +318,9 @@ input.note{width:150px;margin-top:2px}
 _REPORT_JS = """
 const LS_KEY='portierBacktestMarks';
 let marks={};try{marks=JSON.parse(localStorage.getItem(LS_KEY)||'{}')}catch(e){marks={}}
+for(const gid in INITIAL_MARKS){if(!(gid in marks))marks[gid]=INITIAL_MARKS[gid];}
 let activeType=null;
+let onlyMismatch=false;
 const rows=[...document.querySelectorAll('tr.msg')];
 const byId={};rows.forEach(r=>byId[r.dataset.gid]=r);
 
@@ -261,7 +358,8 @@ function applyFilter(){
   rows.forEach(r=>{
     const okType=!activeType||r.dataset.type===activeType;
     const okSearch=!q||r.dataset.search.includes(q);
-    r.style.display=(okType&&okSearch)?'':'none';
+    const okMm=!onlyMismatch||r.dataset.mismatch==='1';
+    r.style.display=(okType&&okSearch&&okMm)?'':'none';
   });
   document.querySelectorAll('tr.day-sep').forEach(sep=>{
     let el=sep.nextElementSibling,any=false;
@@ -275,19 +373,31 @@ function applyFilter(){
 document.querySelectorAll('.chip').forEach(c=>{
   c.addEventListener('click',()=>{
     const t=c.dataset.type;
+    if(!t)return;
     activeType=(activeType===t)?null:t;
+    onlyMismatch=false;
     document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('active',x.dataset.type===activeType));
+    const mm=document.getElementById('btn-mismatch');if(mm)mm.classList.remove('active');
     applyFilter();
   });
 });
 document.getElementById('btn-unknown').addEventListener('click',()=>{
-  activeType='unknown';
+  activeType='unknown';onlyMismatch=false;
   document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('active',x.dataset.type==='unknown'));
+  const mm=document.getElementById('btn-mismatch');if(mm)mm.classList.remove('active');
   applyFilter();
 });
+const btnMm=document.getElementById('btn-mismatch');
+if(btnMm){btnMm.addEventListener('click',()=>{
+  onlyMismatch=!onlyMismatch;
+  if(onlyMismatch){activeType=null;document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));}
+  btnMm.classList.toggle('active',onlyMismatch);
+  applyFilter();
+});}
 document.getElementById('btn-reset').addEventListener('click',()=>{
-  activeType=null;document.getElementById('search').value='';
+  activeType=null;onlyMismatch=false;document.getElementById('search').value='';
   document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
+  const mm=document.getElementById('btn-mismatch');if(mm)mm.classList.remove('active');
   applyFilter();
 });
 document.getElementById('search').addEventListener('input',applyFilter);
@@ -327,21 +437,30 @@ updateCount();
 """
 
 
-def _mark_cell() -> str:
+def _mark_cell(expected: Optional[str] = None) -> str:
     options = '<option value="">— верно —</option>' + "".join(
         f'<option value="{esc(t)}">{esc(_TYPE_LABELS.get(t, t))}</option>'
         for t in _MARKABLE_TYPES
     )
+    hint = ""
+    if expected:
+        hint = f'<div class="expected-hint">ожидалось: {esc(_TYPE_LABELS.get(expected, expected))}</div>'
     return (
         '<td class="mark">'
         f'<select class="expect">{options}</select><br>'
         '<input class="note" placeholder="комментарий">'
-        "</td>"
+        f"{hint}</td>"
     )
 
 
-def render_report(rows: list[BacktestRow], days: int) -> str:
-    """Собрать интерактивный HTML-отчёт (инлайн JS, все данные экранированы)."""
+def render_report(
+    rows: list[BacktestRow], days: int, corrections: Optional[CorrectionsReport] = None
+) -> str:
+    """Собрать интерактивный HTML-отчёт (инлайн JS, все данные экранированы).
+
+    Если передана сверка с разметкой (corrections), добавляется сводка,
+    подсветка расхождений, фильтр «Расхождения» и начальные отметки.
+    """
     total = len(rows)
     errors = sum(1 for r in rows if r.error)
     filtered = sum(1 for r in rows if r.filtered)
@@ -359,6 +478,7 @@ def render_report(rows: list[BacktestRow], days: int) -> str:
 
     table_rows: list[str] = []
     prev_day: Optional[str] = None
+    checks = corrections.checks if corrections else {}
     for r in rows:
         day = r.date[:16] if r.date and r.date != "—" else "—"
         if day != prev_day:
@@ -400,11 +520,16 @@ def render_report(rows: list[BacktestRow], days: int) -> str:
                      fields or "—", esc(r.snippet)]
         tds = "".join(f"<td>{c}</td>" for c in cells)
         search = esc(f"{r.sender} {r.subject}".lower())
+        check = checks.get(r.gmail_id)
+        mismatch = check is not None and not check.matched
+        row_class = "msg mismatch" if mismatch else "msg"
+        expected = check.expected if mismatch else None
         table_rows.append(
-            f'<tr class="msg" data-type="{esc(rtype)}" data-gid="{gid}" '
+            f'<tr class="{row_class}" data-type="{esc(rtype)}" data-gid="{gid}" '
             f'data-date="{esc(r.date)}" data-sender="{esc(r.sender)}" '
             f'data-subject="{esc(r.subject)}" data-search="{search}" '
-            f'style="background:{color}">{tds}{_mark_cell()}</tr>'
+            f'data-mismatch="{1 if mismatch else 0}" '
+            f'style="background:{color}">{tds}{_mark_cell(expected)}</tr>'
         )
 
     headers = "".join(
@@ -412,6 +537,32 @@ def render_report(rows: list[BacktestRow], days: int) -> str:
         for h in ("Дата", "Отправитель", "Тема", "Тип", "Приоритет",
                   "Извлечённые поля", "Фрагмент текста", "Разметка")
     )
+
+    corrections_html = ""
+    mismatch_btn = ""
+    initial_marks = "{}"
+    if corrections is not None:
+        pct = (
+            f"{corrections.matched / corrections.found * 100:.0f}%"
+            if corrections.found else "—"
+        )
+        corrections_html = (
+            f"<p>Разметка: совпало <b>{corrections.matched}</b> из "
+            f"<b>{corrections.found}</b> ({pct}) · "
+            f"расхождений: <b>{corrections.mismatched}</b> · "
+            f"не найдено в выборке: <b>{corrections.missing}</b></p>\n"
+        )
+        mismatch_btn = (
+            f'<button class="chip" id="btn-mismatch">'
+            f"Расхождения: <b>{corrections.mismatched}</b></button>"
+        )
+        initial_marks = json.dumps(
+            {
+                gid: {"expected": c.expected, "comment": ""}
+                for gid, c in checks.items()
+            },
+            ensure_ascii=False,
+        )
 
     return (
         "<!DOCTYPE html>\n"
@@ -422,9 +573,11 @@ def render_report(rows: list[BacktestRow], days: int) -> str:
         f"<p>Период: последние {esc(days)} дн. · Всего писем: <b>{total}</b> · "
         f"Перехвачено фильтрами (без LLM): <b>{filtered}</b> · "
         f"Ошибок LLM: <b>{errors}</b> · Не распознано: <b>{unknown}</b> ({unknown_pct})</p>\n"
+        f"{corrections_html}"
         '<div id="toolbar">\n'
         f"<div>{chips}"
         '<button class="chip" id="btn-unknown">Только нераспознанные</button>'
+        f"{mismatch_btn}"
         '<button class="chip" id="btn-reset">Сбросить</button>'
         '<input id="search" placeholder="поиск по отправителю/теме"></div>\n'
         '<div style="margin-top:6px">Отмечено неверных: <b id="marked-count">0</b>'
@@ -433,12 +586,15 @@ def render_report(rows: list[BacktestRow], days: int) -> str:
         '<span class="gid"> Отметки хранятся в браузере (localStorage) — не теряются при перезагрузке.</span></div>\n'
         "</div>\n"
         f"<table><tr>{headers}</tr>{''.join(table_rows)}</table>\n"
-        f"<script>{_REPORT_JS}</script>\n"
+        f"<script>const INITIAL_MARKS={initial_marks};\n{_REPORT_JS}</script>\n"
         "</body></html>"
     )
 
 
-async def run_backtest(days: int, output: str, cache: str = _DEFAULT_CACHE) -> None:
+async def run_backtest(
+    days: int, output: str, cache: str = _DEFAULT_CACHE,
+    corrections_path: Optional[str] = _DEFAULT_CORRECTIONS,
+) -> None:
     """Прогнать конвейер по всем письмам за период и записать HTML-отчёт."""
     settings = get_settings()
     set_llm_client(create_llm_client(settings))
@@ -496,9 +652,18 @@ async def run_backtest(days: int, output: str, cache: str = _DEFAULT_CACHE) -> N
         await imap.close()
 
     save_cache(rows, cache)
-    report = render_report(rows, days)
+    report = render_report(rows, days, _check_from_file(rows, corrections_path))
     Path(output).write_text(report, encoding="utf-8")
     logger.info("Отчёт записан: %s (%d писем)", output, len(rows))
+
+
+def _check_from_file(
+    rows: list[BacktestRow], corrections_path: Optional[str]
+) -> Optional[CorrectionsReport]:
+    """Загрузить разметку и сверить с выборкой, если файл существует."""
+    if corrections_path and Path(corrections_path).exists():
+        return check_corrections(rows, load_corrections(corrections_path))
+    return None
 
 
 def main() -> None:
@@ -519,6 +684,10 @@ def main() -> None:
         "--reapply-filters", action="store_true",
         help="с --from-cache: пере-применить пред-фильтры к кэшу (после смены правил)",
     )
+    parser.add_argument(
+        "--corrections", default=_DEFAULT_CORRECTIONS,
+        help="путь к файлу разметки для сверки (если существует)",
+    )
     args = parser.parse_args()
     started = datetime.now()
     if args.from_cache:
@@ -528,11 +697,11 @@ def main() -> None:
             reapply_filters(rows, settings)
             save_cache(rows, args.cache)
             logger.info("Пред-фильтры пере-применены, кэш обновлён")
-        report = render_report(rows, args.days)
+        report = render_report(rows, args.days, _check_from_file(rows, args.corrections))
         Path(args.output).write_text(report, encoding="utf-8")
         logger.info("Отчёт из кэша записан: %s (%d писем)", args.output, len(rows))
     else:
-        asyncio.run(run_backtest(args.days, args.output, args.cache))
+        asyncio.run(run_backtest(args.days, args.output, args.cache, args.corrections))
     logger.info("Готово за %s", datetime.now() - started)
 
 

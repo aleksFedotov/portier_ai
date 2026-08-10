@@ -212,8 +212,8 @@
   "sender": "\"Островок! Экстранет\" <notification@info.mail.emergingtravel.com>",
   "subject": "[ВАЖНО] подтвердите бронирование #946983607",
   "current_type": "booking_confirmed",
-  "expected_type": "muted",
-  "comment": ""
+  "expected_type": "admin_attention",
+  "comment": "переразмечено 10.08: тикет 19 — ручная обработка"
  },
  {
   "gmail_id": "19f074db2dd885cd",
@@ -248,8 +248,8 @@
   "sender": "\"Островок! Экстранет\" <notification@info.mail.emergingtravel.com>",
   "subject": "[ВАЖНО] подтвердите бронирование #591497081",
   "current_type": "booking_confirmed",
-  "expected_type": "muted",
-  "comment": ""
+  "expected_type": "admin_attention",
+  "comment": "переразмечено 10.08: тикет 19 — ручная обработка"
  },
  {
   "gmail_id": "19f0c9961a534796",
@@ -401,8 +401,8 @@
   "sender": "noreply@travellinemail.com",
   "subject": "Уведомление о бронированиях",
   "current_type": "booking_confirmed",
-  "expected_type": "unknown",
-  "comment": ""
+  "expected_type": "muted",
+  "comment": "переразмечено 10.08: дайджесты глушим"
  },
  {
   "gmail_id": "19f63fff8b5e688e",
@@ -518,8 +518,8 @@
   "sender": "\"Островок! Экстранет\" <notification@info.mail.emergingtravel.com>",
   "subject": "[ВАЖНО] подтвердите бронирование #494284199",
   "current_type": "booking_confirmed",
-  "expected_type": "muted",
-  "comment": ""
+  "expected_type": "admin_attention",
+  "comment": "переразмечено 10.08: тикет 19 — ручная обработка"
  },
  {
   "gmail_id": "19f31b8ffdc68ce3",
@@ -527,8 +527,8 @@
   "sender": "\"Островок! Экстранет\" <notification@info.mail.emergingtravel.com>",
   "subject": "[ВАЖНО] подтвердите бронирование #690951789",
   "current_type": "booking_confirmed",
-  "expected_type": "muted",
-  "comment": ""
+  "expected_type": "admin_attention",
+  "comment": "переразмечено 10.08: тикет 19 — ручная обработка"
  },
  {
   "gmail_id": "19f355ee67ef1f04",
@@ -536,8 +536,8 @@
   "sender": "\"Островок! Экстранет\" <notification@info.mail.emergingtravel.com>",
   "subject": "[ВАЖНО] подтвердите бронирование #699079814",
   "current_type": "booking_confirmed",
-  "expected_type": "muted",
-  "comment": ""
+  "expected_type": "admin_attention",
+  "comment": "переразмечено 10.08: тикет 19 — ручная обработка"
  },
  {
   "gmail_id": "19f709812777fd8b",
@@ -545,8 +545,8 @@
   "sender": "\"Островок! Экстранет\" <notification@account.extranet.ostrovok.ru>",
   "subject": "[ВАЖНО] подтвердите бронирование #24932589",
   "current_type": "booking_confirmed",
-  "expected_type": "muted",
-  "comment": ""
+  "expected_type": "admin_attention",
+  "comment": "переразмечено 10.08: тикет 19 — ручная обработка"
  },
  {
   "gmail_id": "19f875703c0d0012",
@@ -554,8 +554,8 @@
   "sender": "\"Островок! Экстранет\" <notification@account.extranet.ostrovok.ru>",
   "subject": "[ВАЖНО] подтвердите бронирование #314045027",
   "current_type": "booking_confirmed",
-  "expected_type": "muted",
-  "comment": ""
+  "expected_type": "admin_attention",
+  "comment": "переразмечено 10.08: тикет 19 — ручная обработка"
  },
  {
   "gmail_id": "19f875788c93e63d",
@@ -563,8 +563,8 @@
   "sender": "\"Emergingtravel.com\" <notification@info.mail.emergingtravel.com>",
   "subject": "[ВАЖНО] подтвердите бронирование #314045027",
   "current_type": "booking_confirmed",
-  "expected_type": "muted",
-  "comment": ""
+  "expected_type": "admin_attention",
+  "comment": "переразмечено 10.08: тикет 19 — ручная обработка"
  },
  {
   "gmail_id": "19f98814f9b8c21a",
@@ -572,8 +572,8 @@
   "sender": "\"Островок! Экстранет\" <notification@account.extranet.ostrovok.ru>",
   "subject": "[ВАЖНО] подтвердите бронирование #744120877",
   "current_type": "booking_confirmed",
-  "expected_type": "muted",
-  "comment": ""
+  "expected_type": "admin_attention",
+  "comment": "переразмечено 10.08: тикет 19 — ручная обработка"
  },
  {
   "gmail_id": "19f98b803806b84b",
@@ -581,8 +581,8 @@
   "sender": "\"Островок! Экстранет\" <notification@account.extranet.ostrovok.ru>",
   "subject": "[ВАЖНО] подтвердите бронирование #319803957",
   "current_type": "booking_confirmed",
-  "expected_type": "muted",
-  "comment": ""
+  "expected_type": "admin_attention",
+  "comment": "переразмечено 10.08: тикет 19 — ручная обработка"
  },
  {
   "gmail_id": "19fc8ffa5d2421b0",
@@ -590,8 +590,8 @@
   "sender": "\"Островок! Экстранет\" <notification@account.extranet.ostrovok.ru>",
   "subject": "[ВАЖНО] подтвердите бронирование #108463903",
   "current_type": "booking_confirmed",
-  "expected_type": "muted",
-  "comment": ""
+  "expected_type": "admin_attention",
+  "comment": "переразмечено 10.08: тикет 19 — ручная обработка"
  },
  {
   "gmail_id": "19f23ac0120efe98",
@@ -1031,8 +1031,8 @@
   "sender": "noreply@travellinemail.com",
   "subject": "Гость заполнил анкету. Бронирование №  20260713-7348-449684157, ЛиКи Лофт Отель I LiKi LOFT HOTEL",
   "current_type": "guest_message",
-  "expected_type": "review_notification",
-  "comment": ""
+  "expected_type": "muted",
+  "comment": "переразмечено 10.08: правило mute анкет"
  },
  {
   "gmail_id": "19f03313b6d8b517",
@@ -1040,8 +1040,8 @@
   "sender": "noreply@travellinemail.com",
   "subject": "Гость заполнил анкету. Бронирование №  20260623-7348-441002468, ЛиКи Лофт Отель I LiKi LOFT HOTEL",
   "current_type": "guest_message",
-  "expected_type": "review_notification",
-  "comment": ""
+  "expected_type": "muted",
+  "comment": "переразмечено 10.08: правило mute анкет"
  },
  {
   "gmail_id": "19f5ba34de5fa155",
@@ -1049,8 +1049,8 @@
   "sender": "noreply@travellinemail.com",
   "subject": "Гость заполнил анкету. Бронирование №  20260707-7348-442376508, ЛиКи Лофт Отель I LiKi LOFT HOTEL",
   "current_type": "guest_message",
-  "expected_type": "review_notification",
-  "comment": ""
+  "expected_type": "muted",
+  "comment": "переразмечено 10.08: правило mute анкет"
  },
  {
   "gmail_id": "19f608a6fb806a4c",
@@ -1292,8 +1292,8 @@
   "sender": "\"Илья Мартышкин\" <zakupkiyalagrokoll@mail.ru>",
   "subject": "Re[2]: Бронирование отеля",
   "current_type": "invoice_required",
-  "expected_type": "guest_message",
-  "comment": "Нужно в новый раздел требуется обработка администратором "
+  "expected_type": "invoice_required",
+  "comment": "переразмечено 10.08: тред про счёт/акт, принято"
  },
  {
   "gmail_id": "19f40a419e346548",
@@ -1364,8 +1364,8 @@
   "sender": "priemspb <priemspb@pegast.ru>",
   "subject": "1186369393",
   "current_type": "invoice_required",
-  "expected_type": "guest_message",
-  "comment": ""
+  "expected_type": "muted",
+  "comment": "переразмечено 10.08: priemspb@pegast.ru заглушён"
  },
  {
   "gmail_id": "19f7df0e02aa9d0f",
