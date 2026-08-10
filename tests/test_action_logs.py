@@ -48,6 +48,7 @@ def _gmail() -> SimpleNamespace:
         }),
         fetch_body_text=AsyncMock(return_value="Просим выставить счёт."),
         fetch_attachments=AsyncMock(return_value=[]),
+        create_draft=AsyncMock(return_value="draft-1"),
     )
 
 
@@ -65,20 +66,24 @@ async def _records(model):
 
 
 async def test_action_logged_success(monkeypatch, tmp_path):
-    """Успешная отправка → SUCCESS-логи по invoice_pdf_document и notify_card."""
+    """Успешная отправка → SUCCESS-логи по действиям счёта и карточке."""
     init_engine("sqlite+aiosqlite:///:memory:")
     await init_db()
     monkeypatch.setattr(gmail_client, "analyze_email", AsyncMock(return_value=_invoice_result()))
     bot = AsyncMock()
+    gmail = _gmail()
 
-    status = await gmail_client.process_email(_gmail(), bot, _settings(tmp_path), "gmail-id-1")
+    status = await gmail_client.process_email(gmail, bot, _settings(tmp_path), "gmail-id-1")
 
     assert status == EmailStatus.SUCCESS.value
     logs = {l.action_type: l for l in await _records(ActionLog)}
     assert logs["invoice_pdf_document"].status == "SUCCESS"
+    assert logs["invoice_gmail_draft"].status == "SUCCESS"
     assert logs["notify_card"].status == "SUCCESS"
     assert logs["notify_card"].attempts == 1
     assert logs["notify_card"].error_message is None
+    # Тикет 27: черновик со счётом создан в Gmail ровно один раз
+    gmail.create_draft.assert_awaited_once()
 
 
 async def test_failed_card_logged_and_email_pending(monkeypatch, tmp_path):
@@ -110,20 +115,23 @@ async def test_reprocess_no_duplicates(monkeypatch, tmp_path):
     analyze = AsyncMock(return_value=_invoice_result())
     monkeypatch.setattr(gmail_client, "analyze_email", analyze)
     bot = AsyncMock()
+    gmail = _gmail()
     # Первая обработка: карточка падает после успешной отправки PDF
     bot.send_message.side_effect = RuntimeError("Telegram упал")
     with pytest.raises(RuntimeError):
-        await gmail_client.process_email(_gmail(), bot, _settings(tmp_path), "gmail-id-1")
+        await gmail_client.process_email(gmail, bot, _settings(tmp_path), "gmail-id-1")
     assert bot.send_document.await_count == 1
     assert analyze.await_count == 1
 
     # Повторная обработка того же письма (Telegram уже доступен)
     bot.send_message.side_effect = None
-    status = await gmail_client.process_email(_gmail(), bot, _settings(tmp_path), "gmail-id-1")
+    status = await gmail_client.process_email(gmail, bot, _settings(tmp_path), "gmail-id-1")
 
     assert status == EmailStatus.SUCCESS.value
     # Дубля PDF нет: send_document вызван один раз за обе обработки
     assert bot.send_document.await_count == 1
+    # Дубля черновика в Gmail нет (тикет 27)
+    assert gmail.create_draft.await_count == 1
     # LLM не вызывалась повторно
     assert analyze.await_count == 1
     # Карточка доотправлена (1 падение + 1 успех)
@@ -198,6 +206,40 @@ async def test_invoice_network_failure_gives_up(monkeypatch, tmp_path):
     assert any("Не удалось обработать письмо" in t for t in error_texts)
     logs = {l.action_type: l for l in await _records(ActionLog)}
     assert logs["invoice_pdf_document"].attempts == gmail_client.MAX_INVOICE_ACTION_ATTEMPTS
+
+
+async def test_draft_failure_stays_pending_and_recovers(monkeypatch, tmp_path):
+    """Тикет 27: сбой Gmail при создании черновика — письмо PENDING без алерта;
+    PDF в Telegram не дублируется, черновик доотправляется повторным циклом."""
+    init_engine("sqlite+aiosqlite:///:memory:")
+    await init_db()
+    analyze = AsyncMock(return_value=_invoice_result())
+    monkeypatch.setattr(gmail_client, "analyze_email", analyze)
+    bot = AsyncMock()
+    gmail = _gmail()
+    gmail.create_draft.side_effect = ConnectionError("Gmail недоступен")
+
+    status = await gmail_client.process_email(gmail, bot, _settings(tmp_path), "gmail-id-1")
+
+    assert status == EmailStatus.PENDING.value
+    # Алерта об ошибке нет — временный сбой
+    bot.send_message.assert_not_called()
+    logs = {l.action_type: l for l in await _records(ActionLog)}
+    assert logs["invoice_pdf_document"].status == "SUCCESS"
+    assert logs["invoice_gmail_draft"].status == "FAILED"
+    assert "Gmail недоступен" in logs["invoice_gmail_draft"].error_message
+
+    # Gmail восстановился: черновик доотправляется, PDF и LLM не повторяются
+    gmail.create_draft.side_effect = None
+    status = await gmail_client.process_email(gmail, bot, _settings(tmp_path), "gmail-id-1")
+
+    assert status == EmailStatus.SUCCESS.value
+    assert analyze.await_count == 1
+    assert bot.send_document.await_count == 1
+    assert gmail.create_draft.await_count == 2
+    logs = {l.action_type: l for l in await _records(ActionLog)}
+    assert logs["invoice_gmail_draft"].status == "SUCCESS"
+    assert logs["invoice_gmail_draft"].attempts == 2
 
 
 async def test_check_once_window_covers_pending(monkeypatch, tmp_path):

@@ -138,6 +138,7 @@ async def test_agent_booking_becomes_invoice(monkeypatch, tmp_path):
         }),
         fetch_body_text=AsyncMock(return_value="Подтверждение бронирования."),
         fetch_attachments=AsyncMock(return_value=[]),
+        create_draft=AsyncMock(return_value="draft-1"),
     )
     bot = AsyncMock()
     settings = Settings(

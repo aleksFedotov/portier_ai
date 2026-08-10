@@ -81,10 +81,24 @@ LABEL_OK_STATUSES = frozenset({
     EmailStatus.SUCCESS.value, EmailStatus.SKIPPED.value, ALREADY_PROCESSED,
 })
 
-# Тикет 26: сколько раз переотправляем счёт при сетевом сбое Telegram,
-# прежде чем сдаться (ERROR + алерт админам). Попытка = цикл опроса,
-# внутри неё ещё 4 retry (тикет 16).
+# Тикет 26: сколько раз переотправляем счёт при сетевом сбое Telegram /
+# Gmail (черновик, тикет 27), прежде чем сдаться (ERROR + алерт админам).
+# Попытка = цикл опроса, внутри неё ещё 4 retry (тикет 16).
 MAX_INVOICE_ACTION_ATTEMPTS = 10
+
+# Действия счёта, чьи попытки суммируются для лимита MAX_INVOICE_ACTION_ATTEMPTS.
+INVOICE_ACTION_TYPES = ("invoice_pdf_document", "invoice_gmail_draft")
+
+
+def _is_transient_gmail_error(exc: Exception) -> bool:
+    """Временный сбой Gmail API (сеть, 5xx, 429) — стоит повторить позже."""
+    try:
+        from googleapiclient.errors import HttpError
+    except ImportError:  # pragma: no cover
+        HttpError = ()
+    if isinstance(exc, HttpError):
+        return exc.resp.status in (429, 500, 502, 503, 504)
+    return isinstance(exc, (ConnectionError, TimeoutError, OSError))
 
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
@@ -781,14 +795,15 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
                 result, settings, gmail, bot, record, session, agent=agent
             )
         except Exception as exc:
-            # Тикет 26: сетевой сбой Telegram — не ERROR, а пауза. Письмо
-            # остаётся PENDING: следующий цикл доотправит счёт сам (LLM не
-            # вызовется — тикет 23). Сдаёмся после MAX_INVOICE_ACTION_ATTEMPTS.
-            if isinstance(exc, RETRYABLE_ERRORS):
+            # Тикет 26/27: сетевой сбой Telegram или Gmail (черновик) — не
+            # ERROR, а пауза. Письмо остаётся PENDING: следующий цикл
+            # доотправит счёт сам (LLM не вызовется — тикет 23). Сдаёмся
+            # после MAX_INVOICE_ACTION_ATTEMPTS (попытки обоих действий счёта).
+            if isinstance(exc, RETRYABLE_ERRORS) or _is_transient_gmail_error(exc):
                 attempts = (await session.execute(
-                    select(ActionLog.attempts).where(
+                    select(func.coalesce(func.sum(ActionLog.attempts), 0)).where(
                         ActionLog.email_id == record.id,
-                        ActionLog.action_type == "invoice_pdf_document",
+                        ActionLog.action_type.in_(INVOICE_ACTION_TYPES),
                     )
                 )).scalar() or 0
                 if attempts < MAX_INVOICE_ACTION_ATTEMPTS:
@@ -963,8 +978,9 @@ async def _prepare_invoice_note(
 ) -> str | None:
     """Для invoice_required: реестр → PDF → файл в основную группу → текст пометки.
 
-    Черновики в Gmail отключены (решение пользователя 08.08.2026): пока счёт
-    только уходит в группу на проверку. Черновики/автоотправка — тикет 12.
+    Тикет 27: каждый счёт также сохраняется черновиком в Gmail (кому — email
+    заказчика из реестра/агента) — страховка от потери счёта и готовое письмо
+    для ручной отправки. Автоотправка черновиков — тикет 12.
     agent — запись справочника агентов (тикет 13): подставляет email для счёта
     и пометку о корректировке цены.
     Путь к PDF сохраняется в record.invoice_pdf (тикет 06: команда /invoices).
@@ -972,6 +988,8 @@ async def _prepare_invoice_note(
     if result.type != "invoice_required":
         return None
     from .drafts import (
+        build_draft_body,
+        build_draft_mime,
         find_company,
         merge_invoice_data,
     )
@@ -1004,8 +1022,25 @@ async def _prepare_invoice_note(
         ),
     )
 
+    # Черновик в Gmail (тикет 27). MIME детерминирован — пересобираем при
+    # повторах; внешнее действие (create_draft) под идемпотентностью.
+    # В теме — #<номер брони канала> (Ostrovok/Bronevik/…), чтобы черновики
+    # было легко искать по брони (тикет 27, доп. от 10.08.2026).
+    subject = data.subject
+    if result.booking_number:
+        subject = f"{subject} #{result.booking_number}"
+    raw = build_draft_mime(
+        data.to, subject,
+        build_draft_body(data, settings.HOTEL_NAME), pdf_path,
+    )
+    await _run_action(
+        session, record.id, "invoice_gmail_draft",
+        lambda: gmail.create_draft(raw),
+    )
+
     notes = [
         caption,
+        f"✉️ Черновик со счётом сохранён в Gmail (кому: {data.to})",
     ]
     if agent is not None and agent.price_note:
         notes.append(f"💰 Агент {agent.name}: {agent.price_note}")

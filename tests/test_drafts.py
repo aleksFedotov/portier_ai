@@ -201,13 +201,24 @@ async def test_invoice_pipeline_happy_path(monkeypatch, tmp_path):
         company_name="Ромашка", inn="7712345678", amount="15000 руб.",
         arrival_date="2026-09-01", departure_date="2026-09-05",
     )
+    # Тикет 28: в теме черновика — #<номер брони канала>
+    result = result.model_copy(update={"booking_number": "1206313115"})
     gmail, bot = await _run_pipeline(
         monkeypatch, tmp_path, result, companies=[company]
     )
 
-    # Черновики отключены (08.08.2026): create_draft НЕ вызывается,
+    # Тикет 27: черновик со счётом создаётся в Gmail (адресат — из реестра),
     # PDF уходит документом в общий чат
-    gmail.create_draft.assert_not_awaited()
+    gmail.create_draft.assert_awaited_once()
+    raw = gmail.create_draft.await_args.args[0]
+    import base64
+    import email
+    from email.header import decode_header
+
+    message = email.message_from_bytes(base64.urlsafe_b64decode(raw))
+    assert message["To"] == "buh@romashka.ru"
+    subject = str(decode_header(message["Subject"])[0][0], "utf-8")
+    assert subject == "Счёт за проживание в отеле #1206313115"  # реестр + #бронь
     bot.send_document.assert_awaited_once()
     doc_kwargs = bot.send_document.await_args.kwargs
     assert doc_kwargs["chat_id"] == -100123
@@ -241,8 +252,9 @@ async def test_invoice_pipeline_unknown_company(monkeypatch, tmp_path):
     result = _invoice_result(company_name="ООО «Новое»", amount="9000 руб.")
     gmail, bot = await _run_pipeline(monkeypatch, tmp_path, result)
 
-    # Черновик не создаётся; PDF всё равно уходит в чат (адресат — отправитель)
-    gmail.create_draft.assert_not_awaited()
+    # Тикет 27: черновик создаётся и для новой компании (адресат — отправитель);
+    # PDF уходит в чат
+    gmail.create_draft.assert_awaited_once()
     bot.send_document.assert_awaited_once()
     assert "buh@romashka.ru" in bot.send_document.await_args.kwargs["caption"]
 
