@@ -6,6 +6,8 @@
 """
 
 import logging
+import re
+from decimal import Decimal
 from pathlib import Path
 
 from sqlalchemy import func, select
@@ -39,6 +41,36 @@ async def match_agent(
     """Найти агента в справочнике по теме письма / названию канала."""
     result = await session.execute(select(Agent))
     return match_agent_in_list(result.scalars().all(), subject, channel_name)
+
+
+_PERCENT_RE = re.compile(r"([+-]?\d+(?:[.,]\d+)?)\s*%")
+
+
+def parse_price_percent(price_note: str | None) -> Decimal | None:
+    """Процент скидки/комиссии из price_note: '-15% ко всем дням' → Decimal('-15').
+
+    Процента нет («цену не меняем») — None, сумма счёта не корректируется.
+    """
+    m = _PERCENT_RE.search(price_note or "")
+    if not m:
+        return None
+    return Decimal(m.group(1).replace(",", "."))
+
+
+def apply_price_percent(amount_str: str | None, percent: Decimal | None) -> str | None:
+    """Применить процент к сумме счёта ('18 870' + -15% → '16 039,50').
+
+    Сумма не распарсилась или процента нет — вернуть исходную строку.
+    """
+    if percent is None:
+        return amount_str
+    from .invoices import format_money, parse_amount
+
+    raw = parse_amount(amount_str)
+    if raw is None:
+        return amount_str
+    adjusted = raw * (1 + percent / 100)
+    return format_money(adjusted)
 
 
 async def seed_agents(session_factory, path: str = DEFAULT_SEED_FILE) -> int:

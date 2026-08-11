@@ -201,3 +201,31 @@ async def test_agent_without_invoice_stays_silent(monkeypatch, tmp_path):
     assert record.email_type == "booking_confirmed"
     bot.send_message.assert_not_called()
     bot.send_document.assert_not_called()
+
+
+# ---------- скидка/комиссия из price_note ----------
+
+from decimal import Decimal
+
+from portier.agents import apply_price_percent, parse_price_percent
+
+
+def test_parse_price_percent():
+    assert parse_price_percent("-15% ко всем дням") == Decimal("-15")
+    assert parse_price_percent("-18% ко всем дням") == Decimal("-18")
+    assert parse_price_percent("+10%") == Decimal("10")
+    assert parse_price_percent("цену не меняем") is None
+    assert parse_price_percent("") is None
+    assert parse_price_percent(None) is None
+
+
+def test_apply_price_percent_discount():
+    assert apply_price_percent("18 870", Decimal("-15")) == "16 039,50"
+
+
+def test_apply_price_percent_no_percent_keeps_amount():
+    assert apply_price_percent("18 870", None) == "18 870"
+
+
+def test_apply_price_percent_unparsed_amount_kept():
+    assert apply_price_percent("договорная", Decimal("-15")) == "договорная"

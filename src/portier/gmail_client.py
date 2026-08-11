@@ -1002,6 +1002,18 @@ async def _prepare_invoice_note(
     if agent is not None and agent.invoice_email:
         data.to = agent.invoice_email
 
+    # Скидка/комиссия агента из справочника (тикет 13): процент из price_note
+    # применяется к сумме счёта («-15% ко всем дням» → сумма × 0,85).
+    price_percent = None
+    if agent is not None:
+        from .agents import apply_price_percent, parse_price_percent
+
+        price_percent = parse_price_percent(agent.price_note)
+        if price_percent is not None:
+            data.invoice.amount = apply_price_percent(
+                data.invoice.amount, price_percent
+            )
+
     effective = result.model_copy(update={"invoice": data.invoice})
     pdf_path = generate_invoice_pdf(effective, settings)
     record.invoice_pdf = str(pdf_path)
@@ -1043,7 +1055,10 @@ async def _prepare_invoice_note(
         f"✉️ Черновик со счётом сохранён в Gmail (кому: {data.to})",
     ]
     if agent is not None and agent.price_note:
-        notes.append(f"💰 Агент {agent.name}: {agent.price_note}")
+        note = f"💰 Агент {agent.name}: {agent.price_note}"
+        if price_percent is not None:
+            note += " — применено к сумме счёта"
+        notes.append(note)
     missing = invoice_missing_fields(data.invoice)
     if missing:
         notes.append(f"⚠️ Проверьте данные: не заполнены {', '.join(missing)}")
