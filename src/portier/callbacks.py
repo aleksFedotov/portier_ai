@@ -140,16 +140,22 @@ async def handle_action(callback: CallbackQuery) -> None:
         await session.commit()
 
     label = ACTION_LABELS[action]
-    new_text = (callback.message.text or callback.message.html_text or "") + (
+    msg = callback.message
+    base_text = msg.text or msg.html_text or msg.caption or ""
+    new_text = base_text + (
         f"\n\n✅ Обработано админом {esc(admin_name)} ({esc(label)})"
     )
     if stamp_note:
         new_text += f"\n{esc(stamp_note)}"
     # «Понятно» и «🖋 Печать» взаимоисключающие: снимаем обе (тикет 31)
-    new_markup = remove_button(callback.message.reply_markup, action)
+    new_markup = remove_button(msg.reply_markup, action)
     if action in ("notice_ok", "notice_stamp"):
         other = "notice_stamp" if action == "notice_ok" else "notice_ok"
         new_markup = remove_button(new_markup, other)
-    await callback.message.edit_text(new_text, reply_markup=new_markup)
+    if msg.text is None and msg.caption is not None:
+        # Карточка-документ (например, счёт от участника): текст — в caption
+        await msg.edit_caption(caption=new_text, reply_markup=new_markup)
+    else:
+        await msg.edit_text(new_text, reply_markup=new_markup)
     await callback.answer("Отмечено")
     logger.info("Действие %s по письму %s отметил %s", action, email_id, admin_name)

@@ -173,3 +173,20 @@ async def test_period_ignores_other_chat(_db):
     await cmd.handle_period(callback)
 
     callback.bot.send_document.assert_not_awaited()
+
+
+async def test_owner_invoices_included(_db):
+    """Счета, присланные владельцем (owner_invoice), выдаются наравне с почтовыми."""
+    factory, tmp_path = _db
+    owner_rec = _record(tmp_path, "owner", 0)
+    owner_rec.email_type = "owner_invoice"
+    async with factory() as session:
+        session.add(owner_rec)
+        await session.commit()
+
+    callback = _callback("inv:due:7")
+    await cmd.handle_period(callback)
+
+    assert callback.bot.send_document.await_count == 1
+    doc = callback.bot.send_document.await_args.kwargs["document"]
+    assert doc.filename == "invoice_owner.pdf"

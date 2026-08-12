@@ -977,6 +977,33 @@ async def _process_incoming_invoice(
         return True
 
     if not any(is_invoice_filename(name) for name, _ in attachments):
+        # Тикет 33: запрос на возврат денежных средств (Комфорт Букинг и др.)
+        # — все вложения в группу входящих счетов; без вложений — текстом.
+        # Раньше чёрного списка: notify.comfortbooking.ru заглушён целиком.
+        if is_alert(record.sender, record.subject, settings.REFUND_RULES):
+            record.email_type = "refund_request"
+            chat_id = _invoices_chat(settings)
+            caption = (
+                "💸 <b>Запрос на возврат</b>\n\n"
+                f"📧 От: {esc(record.sender)}\n"
+                f"📌 Тема: {esc(record.subject)}"
+            )
+            if attachments:
+                for filename, data in attachments:
+                    await _run_action(
+                        session, record.id, f"refund_docs:{filename}",
+                        lambda f=filename, d=data: send_document(
+                            bot, chat_id, f, d, caption=caption
+                        ),
+                    )
+            else:
+                await _run_action(
+                    session, record.id, "refund_notice",
+                    lambda: send_notification(bot, chat_id, caption),
+                )
+            record.status = EmailStatus.SUCCESS.value
+            await session.commit()
+            return True
         # Тикет 19: известные отправители входящих счетов без узнаваемого
         # вложения (охрана, ККТ, хозтовары) — текстовое уведомление в третью
         # группу, исключения (Купер) — лично владельцу.

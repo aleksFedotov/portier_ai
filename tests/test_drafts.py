@@ -53,6 +53,7 @@ def _settings(tmp_path):
         INVOICE_OWNER_EXCEPTIONS=[],
         INCOMING_INVOICE_SENDERS=[],
         INCOMING_INVOICES_CHAT_ID=None,
+        REFUND_RULES=[],
     )
 
 

@@ -185,6 +185,13 @@ class Settings(BaseSettings):
         "accounting@travelline.ru",
     ]
 
+    # Тикет 33: запросы на возврат денежных средств → группа входящих счетов
+    # (PDF-вложения пересылаются документом). Раньше чёрного списка:
+    # notify.comfortbooking.ru заглушён целиком, но возвраты важны.
+    REFUND_RULES: list[str] = [
+        "@notify.comfortbooking.ru|возврат",
+    ]
+
     # База данных
     DATABASE_URL: str = "sqlite+aiosqlite:///./data/hotel_bot.db"
 

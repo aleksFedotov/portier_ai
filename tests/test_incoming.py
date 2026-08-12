@@ -136,3 +136,49 @@ async def test_own_outgoing_invoice_not_intercepted(monkeypatch, tmp_path):
     assert record.status == EmailStatus.SKIPPED.value  # свой адрес в чёрном списке
     analyze.assert_not_awaited()
     bot.send_document.assert_not_called()
+
+
+# ---------- тикет 33: запросы на возврат ----------
+
+REFUND_SENDER = 'Комфорт Букинг <info@notify.comfortbooking.ru>'
+REFUND_SUBJECT = 'Запрос на возврат денежных средств по договору №КД1017670'
+
+
+async def test_refund_with_pdf_goes_to_invoices_group(monkeypatch, tmp_path):
+    """Возврат от заглушённого адреса: PDF пересылается в группу счетов."""
+    bot, record, analyze = await _run_pipeline(
+        monkeypatch, tmp_path, REFUND_SENDER, REFUND_SUBJECT,
+        attachments=[("Заявление на возврат.pdf", b"%PDF")],
+        INCOMING_INVOICES_CHAT_ID=555,
+    )
+    assert record.status == EmailStatus.SUCCESS.value
+    assert record.email_type == "refund_request"
+    analyze.assert_not_awaited()
+    bot.send_document.assert_awaited_once()
+    assert _doc_chat_id(bot) == 555
+    caption = bot.send_document.await_args.kwargs["caption"]
+    assert "Запрос на возврат" in caption
+
+
+async def test_refund_without_attachments_sends_text(monkeypatch, tmp_path):
+    bot, record, _ = await _run_pipeline(
+        monkeypatch, tmp_path, REFUND_SENDER, REFUND_SUBJECT,
+        attachments=[],
+        INCOMING_INVOICES_CHAT_ID=555,
+    )
+    assert record.email_type == "refund_request"
+    bot.send_document.assert_not_called()
+    args, kwargs = bot.send_message.await_args
+    assert kwargs.get("chat_id", args[0] if args else None) == 555
+
+
+async def test_comfortbooking_non_refund_still_muted(monkeypatch, tmp_path):
+    """Обычные письма Комфорт Букинга (не возвраты) по-прежнему глушатся."""
+    bot, record, analyze = await _run_pipeline(
+        monkeypatch, tmp_path, REFUND_SENDER, "Подтверждение аннуляции",
+        attachments=[("Документ.pdf", b"%PDF")],
+        INCOMING_INVOICES_CHAT_ID=555,
+    )
+    assert record.status == EmailStatus.SKIPPED.value
+    analyze.assert_not_awaited()
+    bot.send_document.assert_not_called()

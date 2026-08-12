@@ -125,7 +125,8 @@ async def handle_period(callback: CallbackQuery) -> None:
         query = (
             select(ProcessedEmail)
             .where(
-                ProcessedEmail.email_type == "invoice_required",
+                # «owner_invoice» — счета, присланные владельцем боту (тикет 32)
+                ProcessedEmail.email_type.in_(("invoice_required", "owner_invoice")),
                 ProcessedEmail.invoice_pdf.is_not(None),
                 ProcessedEmail.processed_at >= since,
             )
