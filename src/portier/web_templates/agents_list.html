@@ -20,7 +20,7 @@
   <p><a class="button" href="/agents/new">+ Добавить агента</a></p>
   <table>
     <tr><th>Название</th><th>Алиасы</th><th>Счёт по брони</th><th>Плательщик</th>
-        <th>Email для счёта</th><th>Цена</th><th></th></tr>
+        <th>Email для счёта</th><th>Цена</th><th>Правка брони</th><th></th></tr>
     {% for a in agents %}
     <tr>
       <td>{{ a.name }}</td>
@@ -29,6 +29,7 @@
       <td>{{ a.payer_name }}</td>
       <td>{{ a.invoice_email }}</td>
       <td>{{ a.price_note }}</td>
+      <td>{{ 'да' if a.edit_note else '' }}</td>
       <td>
         <a href="/agents/{{ a.id }}/edit">Изменить</a>
         <form method="post" action="/agents/{{ a.id }}/delete" style="display:inline"
@@ -38,7 +39,7 @@
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="7">Пока нет ни одного агента.</td></tr>
+    <tr><td colspan="8">Пока нет ни одного агента.</td></tr>
     {% endfor %}
   </table>
 </body>

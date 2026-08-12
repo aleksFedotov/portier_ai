@@ -15,3 +15,7 @@ invocie.pdf
 # рабочие образцы документов (содержат реквизиты/данные агентов)
 HotelInvoiceData-*.doc
 Работа с агентами.docx
+backtest_hourly_report.md
+backtest_by_chat_report.md
+idea.md
+test_data/

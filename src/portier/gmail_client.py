@@ -14,7 +14,7 @@ import email.utils
 import logging
 import os
 import re
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import func, select
 
@@ -22,10 +22,10 @@ from .cleaner import clean_email
 from .config import Settings
 from .db import get_session_factory
 from .handlers.router import route_notification
-from .handlers.templates import esc
+from .handlers.templates import _row, esc
 from .bot import RETRYABLE_ERRORS, send_document, send_notification
 from .llm import analyze_email
-from .incoming import DOC_SUFFIXES, is_alert, is_invoice_filename
+from .incoming import DOC_SUFFIXES, is_alert, is_invoice_filename, is_own_address
 from .models import ActionLog, ActionLogStatus, EmailStatus, ProcessedEmail
 from .muted import _extract_addr, is_muted
 from .yandex_registry import is_yandex_registry
@@ -62,6 +62,26 @@ SILENT_TYPES = frozenset({
 # понижаем до guest_message — карточка уходит админам, PDF не генерится.
 _REPLY_SUBJECT_RE = re.compile(r"^\s*(re(\[\d+\])?|fwd?)\s*:", re.IGNORECASE)
 _REPLY_DOWNGRADE_TYPES = frozenset({"invoice_required", "booking_comment"})
+
+# Агенты, которым тема черновика счёта — только «#<номер брони>» (без
+# текстового префикса). Решение владельца: Броневику — просто #62158429.
+_SUBJECT_NUMBER_ONLY_AGENTS = ("bronevik", "броневик")
+
+# Сервисные «комментарии» каналов — это контакты гостя, а не запрос к отелю
+# («For contacting the guest please dial: +… (verification code: …)»).
+# Такие уведомления в чат не шлём, письмо просто фиксируем в БД
+# (решение владельца).
+_SERVICE_COMMENT_RE = re.compile(
+    r"for contacting the guest|verification code|please dial", re.IGNORECASE
+)
+_SERVICE_COMMENT_TYPES = frozenset(
+    {"booking_comment", "guest_message", "booking_confirmed"}
+)
+
+# Брони Яндекс Путешествий приходят письмами «изменение бронирования», а не
+# «новое бронирование» — напоминание «отредактируйте бронь» (тикет 30) шлём
+# им и по booking_modified (решение владельца 11.08.2026).
+_EDIT_NOTICE_ON_MODIFIED_AGENTS = ("яндекс путешествия", "yandex travel")
 
 
 def _is_reply_subject(subject: str) -> bool:
@@ -366,21 +386,42 @@ class GmailClient:
             result.append((filename, base64.urlsafe_b64decode(att["data"])))
         return result
 
-    async def create_draft(self, raw_message: str) -> str:
-        """Создать черновик в Gmail (users.drafts.create), вернуть ID черновика."""
+    async def create_draft(self, raw_message: str, thread_id: str | None = None) -> str:
+        """Создать черновик в Gmail (users.drafts.create), вернуть ID черновика.
+
+        thread_id — положить черновик ответом в существующий тред (тикет 31).
+        """
         service = await self._ensure()
 
         def _create():
+            message = {"raw": raw_message}
+            if thread_id:
+                message["threadId"] = thread_id
             return (
                 service.users()
                 .drafts()
-                .create(userId="me", body={"message": {"raw": raw_message}})
+                .create(userId="me", body={"message": message})
                 .execute()
             )
 
         draft = await asyncio.to_thread(_create)
         logger.info("Черновик создан в Gmail: %s", draft.get("id"))
         return draft["id"]
+
+    async def fetch_thread_id(self, gmail_id: str) -> str | None:
+        """threadId письма — чтобы черновик-ответ лёг в тот же тред (тикет 31)."""
+        service = await self._ensure()
+
+        def _get():
+            return (
+                service.users()
+                .messages()
+                .get(userId="me", id=gmail_id, format="metadata")
+                .execute()
+            )
+
+        msg = await asyncio.to_thread(_get)
+        return msg.get("threadId")
 
     async def _processed_label(self) -> str:
         """ID метки portier-processed; метка создаётся при первом обращении."""
@@ -617,6 +658,7 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
         )).scalar_one_or_none()
         if record is not None:
             record.uid = uid
+            record.gmail_id = gmail_id
             record.sender = headers["sender"]
             record.subject = headers["subject"]
             record.received_at = _parse_date(headers["date"])
@@ -628,6 +670,7 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
             record = ProcessedEmail(
                 message_id=message_id,
                 uid=uid,
+                gmail_id=gmail_id,
                 sender=headers["sender"],
                 subject=headers["subject"],
                 received_at=_parse_date(headers["date"]),
@@ -709,9 +752,16 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
                 f"📧 От: {esc(record.sender)}\n"
                 f"📌 Тема: {esc(record.subject)}"
             )
+            # Тикет 31: «Понятно» — просто закрыть; «🖋 Печать» — подписать
+            # PDF-вложения и положить черновик-ответ в Gmail.
+            from aiogram.types import InlineKeyboardMarkup
+
+            buttons = InlineKeyboardMarkup(
+                inline_keyboard=[_row("notice_ok", "notice_stamp", email_id=record.id)]
+            )
             await _run_action(
                 session, record.id, "owner_notice",
-                lambda: send_notification(bot, _owner_chat(settings), text),
+                lambda: send_notification(bot, _owner_chat(settings), text, buttons),
             )
             record.status = EmailStatus.SUCCESS.value
             await session.commit()
@@ -753,6 +803,9 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
         from .schemas import InvoiceDetails
 
         agent = await match_agent(session, record.subject, result.channel_name)
+        # Тикет 30: запоминаем, что это подтверждение брони от агента, —
+        # по нему админу уходит напоминание «отредактируйте бронирование»
+        is_agent_booking = result.type == "booking_confirmed"
         if agent and result.type == "booking_confirmed" and agent.invoice_on_booking:
             inv = result.invoice or InvoiceDetails()
             inv.company_name = agent.payer_name or inv.company_name
@@ -779,12 +832,56 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
         record.pii_map = mapping
         await session.commit()
 
+        # Тикет 30: у агента есть инструкция по редактированию брони —
+        # напоминание администратору в основную группу (до проверки на
+        # молчаливые типы: booking_confirmed сам по себе не уведомляет).
+        # Яндекс Путешествия присылают брони как «изменение» — им напоминание
+        # идёт и по booking_modified.
+        edit_notice_type = is_agent_booking or (
+            result.type == "booking_modified"
+            and agent is not None
+            and any(a in agent.name.lower() for a in _EDIT_NOTICE_ON_MODIFIED_AGENTS)
+        )
+        if agent is not None and agent.edit_note and edit_notice_type:
+            notice = _build_agent_edit_notice(record, result, agent)
+            await _run_action(
+                session, record.id, "agent_edit_notice",
+                lambda: send_notification(bot, settings.TELEGRAM_CHAT_ID, notice),
+            )
+
+        # Заезд сегодня/завтра (решение владельца 11.08.2026): уведомление
+        # админам — до проверки молчаливых типов (booking_confirmed сам по
+        # себе в чат не идёт). is_agent_booking — исходный тип
+        # booking_confirmed, до возможной конвертации в invoice_required.
+        if is_agent_booking:
+            checkin_notice = _build_checkin_notice(result)
+            if checkin_notice:
+                await _run_action(
+                    session, record.id, "checkin_today_notice",
+                    lambda: send_notification(
+                        bot, settings.TELEGRAM_CHAT_ID, checkin_notice
+                    ),
+                )
+
         # Молчаливые типы (тикет 15): SUCCESS в БД, в Telegram не шлём.
         # Подтверждение брони с комментарием гостя — исключение: отдельные
         # письма-комментарии дублируются (до 3 раз), поэтому комментарий
         # показываем администраторам из самого подтверждения.
-        if result.type in SILENT_TYPES and not (
-            result.type == "booking_confirmed" and result.comment_details
+        # Сервисные комментарии каналов («свяжитесь с гостем: +7…,
+        # verification code…») — не запрос: уведомление не шлём.
+        service_comment = (
+            result.type in _SERVICE_COMMENT_TYPES
+            and bool(_SERVICE_COMMENT_RE.search(body_text or ""))
+        )
+        if service_comment:
+            logger.info(
+                "Письмо %s — сервисный комментарий канала (контакты гостя), "
+                "уведомление не шлём", gmail_id,
+            )
+        if service_comment or (
+            result.type in SILENT_TYPES and not (
+                result.type == "booking_confirmed" and result.comment_details
+            )
         ):
             record.status = EmailStatus.SUCCESS.value
             await session.commit()
@@ -864,6 +961,11 @@ async def _process_incoming_invoice(
     Шлём все документы письма (счёт + детализация и пр.), если хотя бы одно
     имя файла похоже на счёт.
     """
+    # Собственные исходящие письма (ответы с чужими счетами) — не входящие
+    # счета: пропускаем перехват, дальше письмо уйдёт в глушение.
+    if is_own_address(record.sender, settings):
+        return False
+
     try:
         attachments = await gmail.fetch_attachments(gmail_id, DOC_SUFFIXES)
     except Exception as exc:
@@ -972,6 +1074,79 @@ async def _process_yandex_registry(
     await session.commit()
 
 
+def _build_agent_edit_notice(record: ProcessedEmail, result, agent) -> str:
+    """Текст напоминания админу «отредактируйте бронирование» (тикет 30)."""
+    lines = [
+        "✏️ <b>Отредактируйте бронирование</b>",
+        "",
+        f"📌 {esc(record.subject)}",
+    ]
+    if result.booking_number:
+        lines.append(f"🔖 Бронь № {esc(result.booking_number)}")
+    if result.arrival_date or result.departure_date:
+        lines.append(f"📅 {result.arrival_date or '—'} — {result.departure_date or '—'}")
+    lines += ["", f"💰 <b>{esc(agent.name)}</b>: {esc(agent.edit_note)}"]
+    return "\n".join(lines)
+
+
+def _parse_booking_date(value: str | None) -> date | None:
+    """Дата заезда/выезда из LLM: ISO (2026-08-12) или ДД.ММ.ГГГГ."""
+    if not value:
+        return None
+    value = value.strip()[:10]
+    for fmt in ("%Y-%m-%d", "%d.%m.%Y"):
+        try:
+            return datetime.strptime(value, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _build_checkin_notice(result) -> str | None:
+    """Уведомление админам о заезде сегодня/завтра с планом действий.
+
+    Решение владельца 11.08.2026:
+    - заезд сегодня → сообщить админам; бронь на 1 ночь → добавить в план
+      уборки выезд на завтра; больше ночей → текущую уборку номера;
+      гостей > 2 → подготовить номер;
+    - заезд завтра → добавить номер в заезды на завтра и узнать время приезда.
+    None, если заезд не сегодня/завтра или дату не распарсить.
+    """
+    arrival = _parse_booking_date(result.arrival_date)
+    if arrival is None:
+        return None
+    today = date.today()
+    is_today = arrival == today
+    if not is_today and arrival != today + timedelta(days=1):
+        return None
+    departure = _parse_booking_date(result.departure_date)
+    nights = max((departure - arrival).days, 1) if departure else 1
+    lines = [
+        "🏨 <b>Сегодня новый заезд!</b>" if is_today
+        else "🗓 <b>Завтра новый заезд!</b>",
+        "",
+    ]
+    if result.booking_number:
+        lines.append(f"🔖 Бронь № {esc(result.booking_number)}")
+    if result.guest_name:
+        lines.append(f"👤 Гость: {esc(result.guest_name)}")
+    lines.append(
+        f"📅 {result.arrival_date} — {result.departure_date or '—'} ({nights} ноч.)"
+    )
+    lines.append("")
+    if is_today:
+        if nights <= 1:
+            lines.append("🧹 Бронь на одну ночь — добавьте в план уборки выезд на завтра.")
+        else:
+            lines.append("🧹 Добавьте текущую уборку этого номера в план уборки.")
+    else:
+        lines.append("📋 Добавьте номер в заезды на завтра и узнайте у гостя время приезда.")
+    guests = getattr(result, "guests_count", None)
+    if guests and guests > 2:
+        lines.append(f"🛏 Подготовьте номер на {guests} человек.")
+    return "\n".join(lines)
+
+
 async def _prepare_invoice_note(
     result, settings: Settings, gmail: GmailClient, bot, record, session,
     agent=None,
@@ -1038,9 +1213,15 @@ async def _prepare_invoice_note(
     # повторах; внешнее действие (create_draft) под идемпотентностью.
     # В теме — #<номер брони канала> (Ostrovok/Bronevik/…), чтобы черновики
     # было легко искать по брони (тикет 27, доп. от 10.08.2026).
+    # Броневику — только номер брони без префикса (решение владельца).
     subject = data.subject
     if result.booking_number:
-        subject = f"{subject} #{result.booking_number}"
+        if agent is not None and any(
+            a in agent.name.lower() for a in _SUBJECT_NUMBER_ONLY_AGENTS
+        ):
+            subject = f"#{result.booking_number}"
+        else:
+            subject = f"{subject} #{result.booking_number}"
     raw = build_draft_mime(
         data.to, subject,
         build_draft_body(data, settings.HOTEL_NAME), pdf_path,

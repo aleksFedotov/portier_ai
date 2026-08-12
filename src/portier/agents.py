@@ -95,6 +95,7 @@ async def seed_agents(session_factory, path: str = DEFAULT_SEED_FILE) -> int:
                 payer_name=item.get("payer_name", ""),
                 invoice_email=item.get("invoice_email", ""),
                 price_note=item.get("price_note", ""),
+                edit_note=item.get("edit_note", ""),
                 note=item.get("note", ""),
             ))
         await session.commit()

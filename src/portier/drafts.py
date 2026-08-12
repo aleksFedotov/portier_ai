@@ -18,6 +18,14 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_SUBJECT = "Счёт на оплату проживания"
 
+# Подпись в письмах со счетами (решение владельца): фиксированная, без HOTEL_NAME.
+SIGNATURE = (
+    "С уважением, ЛиКи Лофт Отель / LiKi LOFT HOTEL\n"
+    "+ 7 950 003 50 30\n"
+    "likihotel.com\n"
+    "Санкт-Петербург, ул. Кирочная, 11"
+)
+
 
 def parse_sender_email(sender: str) -> str:
     """Вытащить адрес из заголовка From вида «Имя <a@b.c>»."""
@@ -32,6 +40,7 @@ class InvoiceDraftData:
     subject: str
     company: Company | None
     invoice: InvoiceDetails
+    booking_number: str | None = None
 
 
 def merge_invoice_data(
@@ -56,7 +65,10 @@ def merge_invoice_data(
         invoice = llm_invoice
         to = parse_sender_email(sender)
         subject = DEFAULT_SUBJECT
-    return InvoiceDraftData(to=to, subject=subject, company=company, invoice=invoice)
+    return InvoiceDraftData(
+        to=to, subject=subject, company=company, invoice=invoice,
+        booking_number=result.booking_number,
+    )
 
 
 async def find_company(
@@ -106,20 +118,48 @@ def build_draft_mime(to: str, subject: str, body_text: str, pdf_path: Path) -> s
     return base64.urlsafe_b64encode(message.as_bytes()).decode("ascii")
 
 
-def build_draft_body(data: InvoiceDraftData, hotel_name: str) -> str:
-    """Текст письма-черновика со счётом."""
+def build_reply_mime(
+    to: str,
+    subject: str,
+    in_reply_to: str,
+    body_text: str,
+    attachments: list[tuple[str, bytes]],
+) -> str:
+    """MIME-ответ на письмо (тикет 31): In-Reply-To/References + вложения.
+
+    in_reply_to — Message-ID исходного письма (record.message_id).
+    """
+    message = MIMEMultipart()
+    message["To"] = to
+    message["Subject"] = subject if subject.lower().startswith("re:") else f"Re: {subject}"
+    if in_reply_to:
+        message["In-Reply-To"] = in_reply_to
+        message["References"] = in_reply_to
+    message.attach(MIMEText(body_text, "plain", "utf-8"))
+    for filename, data in attachments:
+        attachment = MIMEApplication(data, _subtype="pdf")
+        attachment.add_header("Content-Disposition", "attachment", filename=filename)
+        message.attach(attachment)
+    return base64.urlsafe_b64encode(message.as_bytes()).decode("ascii")
+
+
+def build_draft_body(data: InvoiceDraftData, hotel_name: str = "") -> str:
+    """Текст письма-черновика со счётом. hotel_name не используется: подпись
+    фиксированная (SIGNATURE)."""
     inv = data.invoice
     lines = ["Добрый день!", ""]
     period = ""
     if inv.arrival_date or inv.departure_date:
         period = f" ({inv.arrival_date or '—'} — {inv.departure_date or '—'})"
     lines.append(f"Выставляем счёт на оплату проживания{period}.")
+    if data.booking_number:
+        lines.append(f"Номер бронирования: #{data.booking_number}.")
     if inv.amount:
         lines.append(f"Сумма к оплате: {inv.amount}.")
     lines += [
         "",
         "Счёт во вложении (PDF).",
         "",
-        f"С уважением, {hotel_name or 'администрация отеля'}",
+        SIGNATURE,
     ]
     return "\n".join(lines)

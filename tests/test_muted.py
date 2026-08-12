@@ -183,6 +183,8 @@ def test_ticket21_muted_rules():
     assert is_muted("Google Developers <googledevelopers-noreply@google.com>", "[Action Advised] Manage your unused OAuth clients", rules)
     assert is_muted("2ГИС для бизнеса <noreply@account.2gis.com>", "Ваш клиент ждёт ответа на отзыв", rules)
     assert is_muted("Mail Delivery Subsystem <mailer-daemon@googlemail.com>", "Delivery Status Notification (Failure)", rules)
+    # Яндекс: сервисные рассылки поддержки (переход на УПД) — не счёт
+    assert is_muted('Компания Яндекс <info-noreply@support.yandex.ru>', "Переход на использование УПД с 01.08.26г.", rules)
 
 
 async def test_pipeline_ostrovok_sverka_owner(monkeypatch, tmp_path):

@@ -37,6 +37,11 @@ class EmailAnalysisResult(BaseModel):
     guest_name: Optional[str] = None
     arrival_date: Optional[str] = None
     departure_date: Optional[str] = None
+    guests_count: Optional[int] = Field(
+        default=None,
+        description="Число гостей по брони (для booking_confirmed); "
+        "целое число, null если в письме не указано",
+    )
     booking_number: Optional[str] = None
     channel_name: Optional[str] = None
     internal_booking_id: Optional[str] = Field(

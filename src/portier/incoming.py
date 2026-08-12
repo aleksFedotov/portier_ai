@@ -24,6 +24,16 @@ def is_invoice_filename(filename: str) -> bool:
     return name.endswith(_DOC_SUFFIXES) and bool(_INVOICE_WORD_RE.search(name))
 
 
+def is_own_address(sender: str, settings) -> bool:
+    """Отправитель — собственный адрес отеля (наши исходящие письма).
+
+    getattr с дефолтом: в тестах settings часто SimpleNamespace без этого
+    поля — тогда считаем, что собственных адресов нет.
+    """
+    addrs = getattr(settings, "OWN_EMAIL_ADDRESSES", None) or []
+    return _extract_addr(sender) in {a.lower() for a in addrs}
+
+
 def is_alert(sender: str, subject: str, rules: list[str]) -> bool:
     """True, если письмо — важный алерт (правила как в чёрном списке:
     «addr» или «addr|шаблон темы»)."""

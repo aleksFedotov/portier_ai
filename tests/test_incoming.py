@@ -122,3 +122,17 @@ async def test_no_invoice_attachments_fall_through(monkeypatch, tmp_path):
     assert record.status == EmailStatus.SKIPPED.value  # в чёрном списке
     analyze.assert_not_awaited()
     bot.send_document.assert_not_called()
+
+
+async def test_own_outgoing_invoice_not_intercepted(monkeypatch, tmp_path):
+    """Наше исходящее письмо с чужим счётом (ответ с likihotel@gmail.com) —
+    не входящий счёт: в третью группу не шлём, письмо глушится."""
+    bot, record, analyze = await _run_pipeline(
+        monkeypatch, tmp_path,
+        "LiKi LOFT Hotel <likihotel@gmail.com>", "Re: FW: Счет #6414854/1-407319",
+        attachments=[("Счет #6414854.pdf", b"%PDF")],
+        INCOMING_INVOICES_CHAT_ID=555,
+    )
+    assert record.status == EmailStatus.SKIPPED.value  # свой адрес в чёрном списке
+    analyze.assert_not_awaited()
+    bot.send_document.assert_not_called()

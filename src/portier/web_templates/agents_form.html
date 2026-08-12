@@ -35,9 +35,12 @@
       <input name="invoice_email" type="email"
              value="{{ agent.invoice_email if agent else '' }}">
     </label>
-    <label>Корректировка цены (подсказка админу)
+    <label>Корректировка цены (процент применяется к сумме счёта)
       <input name="price_note" value="{{ agent.price_note if agent else '' }}"
              placeholder="-18% ко всем дням">
+    </label>
+    <label>Редактирование брони (непусто — напоминание админу по каждой брони)
+      <textarea name="edit_note" rows="3">{{ agent.edit_note if agent else '' }}</textarea>
     </label>
     <label>Заметки
       <textarea name="note" rows="3">{{ agent.note if agent else '' }}</textarea>

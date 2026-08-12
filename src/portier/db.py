@@ -48,10 +48,14 @@ _NEW_COLUMNS = {
         ("kpp", "VARCHAR DEFAULT ''"),
         ("legal_address", "VARCHAR DEFAULT ''"),
     ],
+    "agents": [
+        ("edit_note", "TEXT DEFAULT ''"),
+    ],
     "processed_emails": [
         ("invoice_pdf", "VARCHAR"),
         ("invoice_message_id", "INTEGER"),
         ("invoice_chat_id", "INTEGER"),
+        ("gmail_id", "VARCHAR DEFAULT ''"),
     ],
 }
 

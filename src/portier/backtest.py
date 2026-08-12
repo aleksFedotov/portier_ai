@@ -28,7 +28,7 @@ from typing import Optional
 
 from .config import get_settings
 from .gmail_client import GmailClient, analyze_body, set_llm_client
-from .incoming import is_alert, is_invoice_filename
+from .incoming import is_alert, is_invoice_filename, is_own_address
 from .llm import create_llm_client
 from .muted import _extract_addr, is_muted
 from .schemas import EmailAnalysisResult
@@ -119,11 +119,13 @@ def apply_prefilters(settings, sender: str, subject: str, attachments: list[str]
     if is_alert(sender, subject, settings.ALERT_RULES):
         return "alert"
     # 2. Входящие счета: по вложению, затем по известным отправителям
-    if any(is_invoice_filename(name) for name in attachments):
-        is_exception = addr in {a.lower() for a in settings.INVOICE_OWNER_EXCEPTIONS}
-        return "kuper_invoice" if is_exception else "incoming_invoice"
-    if addr in {a.lower() for a in settings.INCOMING_INVOICE_SENDERS}:
-        return "incoming_invoice"
+    #    (собственные исходящие письма — не входящие счета)
+    if not is_own_address(sender, settings):
+        if any(is_invoice_filename(name) for name in attachments):
+            is_exception = addr in {a.lower() for a in settings.INVOICE_OWNER_EXCEPTIONS}
+            return "kuper_invoice" if is_exception else "incoming_invoice"
+        if addr in {a.lower() for a in settings.INCOMING_INVOICE_SENDERS}:
+            return "incoming_invoice"
     # 3. Коды входа в учётные записи
     if is_alert(sender, subject, settings.LOGIN_CODE_RULES):
         return "login_code"

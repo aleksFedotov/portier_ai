@@ -114,6 +114,13 @@ class Settings(BaseSettings):
         "info@kuper.ru",
     ]
 
+    # Собственные адреса отеля: наши исходящие письма (ответы со счетами,
+    # которые мы пересылаем другим компаниям) — не входящие счета, в третью
+    # группу не шлём.
+    OWN_EMAIL_ADDRESSES: list[str] = [
+        "likihotel@gmail.com",
+    ]
+
     # Отправители, о письмах которых уведомляем владельца лично (без LLM):
     # отчёты агентов, реестры Отелло, акты сверки — обрабатываются вручную.
     OWNER_NOTICE_SENDERS: list[str] = [
@@ -197,6 +204,11 @@ class Settings(BaseSettings):
     INVOICE_STAMP_PATH: str = "data/печать 2-Photoroom.png"
     INVOICE_SIGNATURE_PATH: str = "data/подпись 2-Photoroom.png"
     INVOICE_LOGO_PATH: str = "data/logo.jpg"
+    # Расшифровка подписи (ФИО) для наложения на входящие документы (тикет 31).
+    # Ставится на фиолетовые метки шаблонов и под факсимиле в эвристике.
+    SIGNATURE_CAPTION: str = "Генеральный директор Кузин А. С."
+    # Файл шаблонов постановки печати/факсимиле (разметка владельца, тикет 31)
+    STAMP_TEMPLATES_FILE: str = "stamp_templates.yaml"
 
     # Каталог для PDF-счетов
     INVOICES_DIR: str = "data/invoices"
@@ -244,6 +256,9 @@ class Settings(BaseSettings):
         "email@business.yandex.ru|статистика за неделю",
         "hotelier-news@travel.yandex.ru",
         "hotelier-info@travel.yandex.ru",
+        # Яндекс: сервисные рассылки поддержки («Переход на УПД с 01.08.26» и
+        # т.п.) — LLM принимал их за запрос счёта (решение владельца 11.08.2026)
+        "info-noreply@support.yandex.ru",
         "info@mail.extranet.ostrovok.ru",
         # разовые КП и рассылки
         "info@kuper.ru",

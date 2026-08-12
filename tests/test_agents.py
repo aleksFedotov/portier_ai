@@ -229,3 +229,242 @@ def test_apply_price_percent_no_percent_keeps_amount():
 
 def test_apply_price_percent_unparsed_amount_kept():
     assert apply_price_percent("договорная", Decimal("-15")) == "договорная"
+
+
+# ---------- напоминание «отредактируйте бронирование» (тикет 30) ----------
+
+async def test_agent_edit_notice_sent(monkeypatch, tmp_path):
+    """Агент с edit_note + booking_confirmed → напоминание в основную группу."""
+    init_engine("sqlite+aiosqlite:///:memory:")
+    await init_db()
+    async with get_session_factory()() as session:
+        session.add(_agent(
+            name="Tvil", aliases="Tvil", invoice_on_booking=False,
+            payer_name="", invoice_email="", price_note="",
+            edit_note="Цена -20% ко всем дням. Гость оплачивает в отеле.",
+        ))
+        await session.commit()
+
+    analyze = AsyncMock(return_value=EmailAnalysisResult(
+        type="booking_confirmed", priority="normal",
+        booking_number="555", channel_name="Tvil.ru",
+        arrival_date="2026-09-01", departure_date="2026-09-03",
+        action_required="—",
+    ))
+    monkeypatch.setattr(gmail_client, "analyze_email", analyze)
+    gmail = SimpleNamespace(
+        fetch_headers=AsyncMock(return_value={
+            "message_id": "<msg-1@x>",
+            "sender": "TravelLine <noreply@travellinemail.com>",
+            "subject": "Подтверждение бронирования №555. Tvil.ru",
+            "date": "Mon, 1 Sep 2026 10:00:00 +0300",
+            "internal_date": 1756710000000,
+        }),
+        fetch_body_text=AsyncMock(return_value="Подтверждение бронирования."),
+        fetch_attachments=AsyncMock(return_value=[]),
+    )
+    bot = AsyncMock()
+    settings = Settings(
+        OPENAI_API_KEY="k", TELEGRAM_CHAT_ID=111,
+        DATABASE_URL="sqlite+aiosqlite:///:memory:",
+        INVOICES_DIR=str(tmp_path),
+    )
+    await gmail_client.process_email(gmail, bot, settings, "gmail-id-1")
+
+    async with get_session_factory()() as session:
+        record = (await session.execute(select(ProcessedEmail))).scalars().one()
+    assert record.status == EmailStatus.SUCCESS.value
+    bot.send_message.assert_awaited_once()
+    call = bot.send_message.await_args
+    assert call.kwargs["chat_id"] == 111
+    text = call.kwargs["text"]
+    assert "Отредактируйте бронирование" in text
+    assert "Бронь № 555" in text
+    assert "-20% ко всем дням" in text
+    bot.send_document.assert_not_called()
+
+
+async def test_yandex_modified_edit_notice_sent(monkeypatch, tmp_path):
+    """Яндекс Путешествия: бронь приходит как booking_modified — напоминание
+    «отредактируйте бронь» всё равно уходит в основную группу."""
+    init_engine("sqlite+aiosqlite:///:memory:")
+    await init_db()
+    async with get_session_factory()() as session:
+        session.add(_agent(
+            name="Яндекс Путешествия", aliases="Яндекс Путешествия;Yandex Travel",
+            invoice_on_booking=False, payer_name="", invoice_email="", price_note="",
+            edit_note="Убрать скидку на совместную акцию, цена -20% ко всем дням.",
+        ))
+        await session.commit()
+
+    analyze = AsyncMock(return_value=EmailAnalysisResult(
+        type="booking_modified", priority="normal",
+        booking_number="777", channel_name="Яндекс Путешествия",
+        arrival_date="2026-09-01", departure_date="2026-09-03",
+        action_required="—",
+    ))
+    monkeypatch.setattr(gmail_client, "analyze_email", analyze)
+    gmail = SimpleNamespace(
+        fetch_headers=AsyncMock(return_value={
+            "message_id": "<msg-1@x>",
+            "sender": "TravelLine <noreply@travellinemail.com>",
+            "subject": "Изменение бронирования №777. Яндекс Путешествия",
+            "date": "Mon, 1 Sep 2026 10:00:00 +0300",
+            "internal_date": 1756710000000,
+        }),
+        fetch_body_text=AsyncMock(return_value="Изменение бронирования."),
+        fetch_attachments=AsyncMock(return_value=[]),
+    )
+    bot = AsyncMock()
+    settings = Settings(
+        OPENAI_API_KEY="k", TELEGRAM_CHAT_ID=111,
+        DATABASE_URL="sqlite+aiosqlite:///:memory:",
+        INVOICES_DIR=str(tmp_path),
+    )
+    await gmail_client.process_email(gmail, bot, settings, "gmail-id-1")
+
+    async with get_session_factory()() as session:
+        record = (await session.execute(select(ProcessedEmail))).scalars().one()
+    assert record.status == EmailStatus.SUCCESS.value
+    assert record.email_type == "booking_modified"
+    bot.send_message.assert_awaited_once()
+    call = bot.send_message.await_args
+    assert call.kwargs["chat_id"] == 111
+    assert "Отредактируйте бронирование" in call.kwargs["text"]
+
+
+async def test_other_agent_modified_stays_silent(monkeypatch, tmp_path):
+    """Другой агент с edit_note + booking_modified — напоминание не уходит."""
+    init_engine("sqlite+aiosqlite:///:memory:")
+    await init_db()
+    async with get_session_factory()() as session:
+        session.add(_agent(
+            name="Tvil", aliases="Tvil", invoice_on_booking=False,
+            payer_name="", invoice_email="", price_note="",
+            edit_note="Цена -20% ко всем дням.",
+        ))
+        await session.commit()
+
+    analyze = AsyncMock(return_value=EmailAnalysisResult(
+        type="booking_modified", priority="normal",
+        booking_number="888", channel_name="Tvil.ru", action_required="—",
+    ))
+    monkeypatch.setattr(gmail_client, "analyze_email", analyze)
+    gmail = SimpleNamespace(
+        fetch_headers=AsyncMock(return_value={
+            "message_id": "<msg-1@x>",
+            "sender": "TravelLine <noreply@travellinemail.com>",
+            "subject": "Изменение бронирования №888. Tvil.ru",
+            "date": "Mon, 1 Sep 2026 10:00:00 +0300",
+            "internal_date": 1756710000000,
+        }),
+        fetch_body_text=AsyncMock(return_value="Изменение бронирования."),
+        fetch_attachments=AsyncMock(return_value=[]),
+    )
+    bot = AsyncMock()
+    settings = Settings(
+        OPENAI_API_KEY="k", TELEGRAM_CHAT_ID=111,
+        DATABASE_URL="sqlite+aiosqlite:///:memory:",
+        INVOICES_DIR=str(tmp_path),
+    )
+    await gmail_client.process_email(gmail, bot, settings, "gmail-id-1")
+    bot.send_message.assert_not_called()
+
+
+async def test_agent_without_edit_notice_stays_silent(monkeypatch, tmp_path):
+    """Агент без edit_note: напоминание не уходит (поведение тикета 13)."""
+    init_engine("sqlite+aiosqlite:///:memory:")
+    await init_db()
+    async with get_session_factory()() as session:
+        session.add(_agent(name="Tvil", aliases="Tvil", invoice_on_booking=False,
+                           payer_name="", invoice_email="", price_note=""))
+        await session.commit()
+
+    analyze = AsyncMock(return_value=EmailAnalysisResult(
+        type="booking_confirmed", priority="normal",
+        channel_name="Tvil.ru", action_required="—",
+    ))
+    monkeypatch.setattr(gmail_client, "analyze_email", analyze)
+    gmail = SimpleNamespace(
+        fetch_headers=AsyncMock(return_value={
+            "message_id": "<msg-1@x>",
+            "sender": "TravelLine <noreply@travellinemail.com>",
+            "subject": "Подтверждение бронирования №555. Tvil.ru",
+            "date": "Mon, 1 Sep 2026 10:00:00 +0300",
+            "internal_date": 1756710000000,
+        }),
+        fetch_body_text=AsyncMock(return_value="Подтверждение бронирования."),
+        fetch_attachments=AsyncMock(return_value=[]),
+    )
+    bot = AsyncMock()
+    settings = Settings(
+        OPENAI_API_KEY="k", TELEGRAM_CHAT_ID=111,
+        DATABASE_URL="sqlite+aiosqlite:///:memory:",
+        INVOICES_DIR=str(tmp_path),
+    )
+    await gmail_client.process_email(gmail, bot, settings, "gmail-id-1")
+
+    bot.send_message.assert_not_called()
+
+
+# ---------- тема/тело черновика Броневика ----------
+
+async def test_bronevik_draft_subject_and_body(monkeypatch, tmp_path):
+    """Броневику тема черновика — только «#<номер брони>»; в теле всех счетов
+    дублируется номер брони, подпись — фиксированный блок отеля."""
+    import base64
+    import email
+    from email.header import decode_header
+
+    init_engine("sqlite+aiosqlite:///:memory:")
+    await init_db()
+    async with get_session_factory()() as session:
+        session.add(_agent(
+            name="Bronevik", aliases="Bronevik;Броневик",
+            payer_name="ООО «Компания Броневик»", invoice_email="",
+        ))
+        await session.commit()
+
+    analyze = AsyncMock(return_value=EmailAnalysisResult(
+        type="booking_confirmed", priority="normal",
+        booking_number="62158429", channel_name="Bronevik",
+        arrival_date="2026-09-01", departure_date="2026-09-03",
+        action_required="—",
+        invoice=InvoiceDetails(amount="9 000,00", description="Стандарт"),
+    ))
+    monkeypatch.setattr(gmail_client, "analyze_email", analyze)
+    gmail = SimpleNamespace(
+        fetch_headers=AsyncMock(return_value={
+            "message_id": "<msg-1@x>",
+            "sender": "TravelLine <noreply@travellinemail.com>",
+            "subject": "Подтверждение бронирования №62158429. Bronevik",
+            "date": "Mon, 1 Sep 2026 10:00:00 +0300",
+            "internal_date": 1756710000000,
+        }),
+        fetch_body_text=AsyncMock(return_value="Подтверждение бронирования."),
+        fetch_attachments=AsyncMock(return_value=[]),
+        create_draft=AsyncMock(return_value="draft-1"),
+    )
+    bot = AsyncMock()
+    settings = Settings(
+        OPENAI_API_KEY="k", TELEGRAM_CHAT_ID=111,
+        DATABASE_URL="sqlite+aiosqlite:///:memory:",
+        INVOICES_DIR=str(tmp_path),
+    )
+    await gmail_client.process_email(gmail, bot, settings, "gmail-id-1")
+
+    gmail.create_draft.assert_awaited_once()
+    raw = gmail.create_draft.await_args.args[0]
+    message = email.message_from_bytes(base64.urlsafe_b64decode(raw))
+    raw_subject = decode_header(message["Subject"])[0][0]
+    subject = raw_subject if isinstance(raw_subject, str) else str(raw_subject, "utf-8")
+    assert subject == "#62158429"  # без префикса «Счёт на оплату проживания»
+
+    body = message.get_payload(0).get_payload(decode=True).decode("utf-8")
+    assert "Номер бронирования: #62158429." in body
+    assert body.rstrip().endswith(
+        "С уважением, ЛиКи Лофт Отель / LiKi LOFT HOTEL\n"
+        "+ 7 950 003 50 30\n"
+        "likihotel.com\n"
+        "Санкт-Петербург, ул. Кирочная, 11"
+    )

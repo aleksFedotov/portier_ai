@@ -26,6 +26,8 @@ class ProcessedEmail(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     message_id: Mapped[str] = mapped_column(String, unique=True, index=True)
     uid: Mapped[int] = mapped_column(Integer, index=True)
+    # ID письма в Gmail API (тикет 31): нужен колбэкам для скачивания вложений
+    gmail_id: Mapped[str] = mapped_column(String, default="")
     sender: Mapped[str] = mapped_column(String, default="")
     subject: Mapped[str] = mapped_column(Text, default="")
     received_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -125,4 +127,8 @@ class Agent(Base):
     payer_name: Mapped[str] = mapped_column(String, default="")  # на кого счёт
     invoice_email: Mapped[str] = mapped_column(String, default="")  # куда слать счёт
     price_note: Mapped[str] = mapped_column(String, default="")  # «-18% ко всем дням»
+    # Инструкция админу по редактированию брони в шахматке (тикет 30,
+    # «Работа с агентами.docx»): непустая — по booking_confirmed шлём
+    # напоминание в основную группу
+    edit_note: Mapped[str] = mapped_column(Text, default="")
     note: Mapped[str] = mapped_column(Text, default="")

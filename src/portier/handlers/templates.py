@@ -11,10 +11,13 @@ _TRUNCATE_AT = 3800  # с запасом под служебную часть с
 
 # Человекочитаемые названия действий администратора
 ACTION_LABELS = {
-    "recorded_in_pms": "Записано в PMS",
+    "recorded_in_pms": "Отмечено в шахматке",
     "replied_to_guest": "Отвечено гостю",
     "invoice_sent": "Счет отправлен",
     "invoice_paid": "💰 Оплачен",
+    # Тикет 31: карточка «документ для ручной обработки» владельцу
+    "notice_ok": "✅ Понятно",
+    "notice_stamp": "🖋 Печать",
 }
 
 
@@ -87,7 +90,7 @@ def build_notification(
         if invoice_note:
             text += f"\n{esc(invoice_note)}"
         buttons = InlineKeyboardMarkup(
-            inline_keyboard=[_row("invoice_sent", "invoice_paid", email_id=email_id)]
+            inline_keyboard=[_row("invoice_sent", email_id=email_id)]
         )
     elif t == "booking_cancelled":
         text = (

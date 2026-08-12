@@ -8,6 +8,7 @@
 """
 
 from types import SimpleNamespace
+from datetime import date, timedelta
 from unittest.mock import AsyncMock
 
 import pytest
@@ -25,12 +26,17 @@ async def _run_pipeline(monkeypatch, tmp_path, sender, subject, llm_type=None, *
     init_engine("sqlite+aiosqlite:///:memory:")
     await init_db()
 
+    body_text = kw.pop("body_text", "Текст письма.")
     analyze = AsyncMock()
     if llm_type:
         analyze.return_value = EmailAnalysisResult(
             type=llm_type, priority="normal", action_required="—",
             booking_number="20260807-7348-456714535",
             comment_details=kw.pop("comment_details", None),
+            arrival_date=kw.pop("arrival_date", None),
+            departure_date=kw.pop("departure_date", None),
+            guests_count=kw.pop("guests_count", None),
+            guest_name=kw.pop("guest_name", None),
         )
     monkeypatch.setattr(gmail_client, "analyze_email", analyze)
     gmail = SimpleNamespace(
@@ -39,7 +45,7 @@ async def _run_pipeline(monkeypatch, tmp_path, sender, subject, llm_type=None, *
             "subject": subject, "date": "Mon, 1 Sep 2026 10:00:00 +0300",
             "internal_date": 1756710000000,
         }),
-        fetch_body_text=AsyncMock(return_value="Текст письма."),
+        fetch_body_text=AsyncMock(return_value=body_text),
         fetch_attachments=AsyncMock(return_value=[]),
     )
     bot = AsyncMock()
@@ -102,6 +108,119 @@ async def test_booking_confirmed_without_comment_silent(monkeypatch, tmp_path):
         llm_type="booking_confirmed",
     )
     assert record.status == EmailStatus.SUCCESS.value
+    bot.send_message.assert_not_called()
+
+
+# ---------- сервисные комментарии каналов (контакты гостя) ----------
+
+
+@pytest.mark.parametrize("llm_type", ["booking_confirmed", "guest_message", "booking_comment"])
+async def test_service_comment_not_notified(monkeypatch, tmp_path, llm_type):
+    """«For contacting the guest please dial… (verification code…)» — это
+    контакты гостя, а не запрос: уведомление в чат не шлём."""
+    bot, record, _ = await _run_pipeline(
+        monkeypatch, tmp_path,
+        "Acase <noreply@acase.ru>",
+        "Подтверждение бронирования №14638587. Acase.ru",
+        llm_type=llm_type,
+        comment_details="Гость просит связаться с ней по телефону.",
+        body_text=(
+            "Комментарий гостя: For contacting the guest please dial: "
+            "+8651368192531(verification code:42549)"
+        ),
+    )
+    assert record.status == EmailStatus.SUCCESS.value
+    bot.send_message.assert_not_called()
+
+
+async def test_real_comment_still_notified(monkeypatch, tmp_path):
+    """Обычный комментарий гостя (не контакты) по-прежнему уходит в чат."""
+    bot, record, _ = await _run_pipeline(
+        monkeypatch, tmp_path,
+        "Acase <noreply@acase.ru>",
+        "Подтверждение бронирования №14638587. Acase.ru",
+        llm_type="booking_confirmed",
+        comment_details="Просит тихий номер",
+        body_text="Комментарий гостя: просим тихий номер, приедем поздно.",
+    )
+    assert record.status == EmailStatus.SUCCESS.value
+    bot.send_message.assert_awaited_once()
+
+
+# ---------- заезд сегодня: план уборки админам ----------
+
+
+async def test_checkin_today_one_night(monkeypatch, tmp_path):
+    """Заезд сегодня на 1 ночь → уведомление «выезд на завтра в план уборки»."""
+    today = date.today()
+    bot, record, _ = await _run_pipeline(
+        monkeypatch, tmp_path,
+        "TravelLine <noreply@travellinemail.com>",
+        "Подтверждение бронирования №20260807-7348-456714535",
+        llm_type="booking_confirmed",
+        arrival_date=today.isoformat(),
+        departure_date=(today + timedelta(days=1)).isoformat(),
+        guest_name="ИВАНОВ ИВАН",
+    )
+    assert record.status == EmailStatus.SUCCESS.value
+    bot.send_message.assert_awaited_once()
+    assert _msg_chat_id(bot) == 111
+    text = bot.send_message.await_args.kwargs.get("text", "")
+    assert "Сегодня новый заезд" in text
+    assert "выезд на завтра" in text
+    assert "текущую уборку" not in text
+
+
+async def test_checkin_today_multi_night_many_guests(monkeypatch, tmp_path):
+    """Заезд сегодня на 3 ночи, 4 гостя → текущая уборка + подготовить номер."""
+    today = date.today()
+    bot, record, _ = await _run_pipeline(
+        monkeypatch, tmp_path,
+        "TravelLine <noreply@travellinemail.com>",
+        "Подтверждение бронирования №20260807-7348-456714535",
+        llm_type="booking_confirmed",
+        arrival_date=today.strftime("%d.%m.%Y"),
+        departure_date=(today + timedelta(days=3)).strftime("%d.%m.%Y"),
+        guests_count=4,
+    )
+    text = bot.send_message.await_args.kwargs.get("text", "")
+    assert "текущую уборку" in text
+    assert "на 4 человек" in text
+    assert "выезд на завтра" not in text
+
+
+async def test_checkin_tomorrow_notified(monkeypatch, tmp_path):
+    """Заезд завтра → «добавьте в заезды на завтра и узнайте время приезда»."""
+    tomorrow = date.today() + timedelta(days=1)
+    bot, record, _ = await _run_pipeline(
+        monkeypatch, tmp_path,
+        "TravelLine <noreply@travellinemail.com>",
+        "Подтверждение бронирования №20260807-7348-456714535",
+        llm_type="booking_confirmed",
+        arrival_date=tomorrow.isoformat(),
+        departure_date=(tomorrow + timedelta(days=2)).isoformat(),
+        guest_name="ПЕТРОВ ПЁТР",
+    )
+    assert record.status == EmailStatus.SUCCESS.value
+    bot.send_message.assert_awaited_once()
+    assert _msg_chat_id(bot) == 111
+    text = bot.send_message.await_args.kwargs.get("text", "")
+    assert "Завтра новый заезд" in text
+    assert "заезды на завтра" in text
+    assert "время приезда" in text
+
+
+async def test_checkin_not_today_silent(monkeypatch, tmp_path):
+    """Заезд позже завтра — уведомления о заезде нет (молчаливый тип)."""
+    later = date.today() + timedelta(days=2)
+    bot, record, _ = await _run_pipeline(
+        monkeypatch, tmp_path,
+        "TravelLine <noreply@travellinemail.com>",
+        "Подтверждение бронирования №20260807-7348-456714535",
+        llm_type="booking_confirmed",
+        arrival_date=later.isoformat(),
+        departure_date=(later + timedelta(days=1)).isoformat(),
+    )
     bot.send_message.assert_not_called()
 
 

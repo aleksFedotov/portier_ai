@@ -51,7 +51,7 @@ def test_guest_message_button():
 
 def test_invoice_button():
     _, markup = _render(_result("invoice_required"))
-    assert _actions(markup) == ["invoice_sent", "invoice_paid"]
+    assert _actions(markup) == ["invoice_sent"]
 
 
 def test_no_button_types():
@@ -83,4 +83,5 @@ def test_long_text_truncated():
 def test_action_labels_complete():
     assert set(ACTION_LABELS) == {
         "recorded_in_pms", "replied_to_guest", "invoice_sent", "invoice_paid",
+        "notice_ok", "notice_stamp",  # тикет 31
     }

@@ -130,6 +130,7 @@ def create_app(session_factory) -> FastAPI:
         payer_name: str = Form(""),
         invoice_email: str = Form(""),
         price_note: str = Form(""),
+        edit_note: str = Form(""),
         note: str = Form(""),
     ):
         async with session_factory() as session:
@@ -137,7 +138,7 @@ def create_app(session_factory) -> FastAPI:
                 name=name, aliases=aliases,
                 invoice_on_booking=bool(invoice_on_booking),
                 payer_name=payer_name, invoice_email=invoice_email,
-                price_note=price_note, note=note,
+                price_note=price_note, edit_note=edit_note, note=note,
             ))
             await session.commit()
         return RedirectResponse(url="/agents", status_code=303)
@@ -162,6 +163,7 @@ def create_app(session_factory) -> FastAPI:
         payer_name: str = Form(""),
         invoice_email: str = Form(""),
         price_note: str = Form(""),
+        edit_note: str = Form(""),
         note: str = Form(""),
     ):
         async with session_factory() as session:
@@ -173,6 +175,7 @@ def create_app(session_factory) -> FastAPI:
                 agent.payer_name = payer_name
                 agent.invoice_email = invoice_email
                 agent.price_note = price_note
+                agent.edit_note = edit_note
                 agent.note = note
                 await session.commit()
         return RedirectResponse(url="/agents", status_code=303)
