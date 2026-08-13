@@ -335,9 +335,8 @@ class Settings(BaseSettings):
         # Google: условия использования и советы Developers
         "google-noreply@google.com",
         "googledevelopers-noreply@google.com",
-        # 2ГИС «клиент ждёт ответа на отзыв»: реальный адрес noreply@
-        # (в списке был вариант no-reply@ — не матчился)
-        "noreply@account.2gis.com",
+        # 2ГИС «клиент ждёт ответа на отзыв» (noreply@account.2gis.com) НЕ глушим:
+        # решение владельца 13.08.2026 — обрабатывать как отзывы (review_notification)
         # баунсы почты
         "mailer-daemon@googlemail.com",
     ]

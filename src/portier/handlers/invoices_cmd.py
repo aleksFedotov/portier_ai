@@ -100,6 +100,8 @@ async def handle_scope(callback: CallbackQuery) -> None:
     if chat_id is None or callback.message.chat.id != chat_id:
         await callback.answer()
         return
+    # Убираем вопрос «Какие счета прислать?» — диалог не должен копиться в чате
+    await callback.message.delete()
     await callback.message.answer(
         "За какой период?", reply_markup=period_keyboard(scope)
     )
@@ -117,6 +119,9 @@ async def handle_period(callback: CallbackQuery) -> None:
     if chat_id is None or callback.message.chat.id != chat_id:
         await callback.answer()
         return
+
+    # Убираем вопрос «За какой период?» — выбор сделан, кнопки больше не нужны
+    await callback.message.delete()
 
     since = datetime.utcnow() - timedelta(days=days)
     paid_ids_q = select(EmailAction.email_id).where(EmailAction.action == PAID_ACTION)

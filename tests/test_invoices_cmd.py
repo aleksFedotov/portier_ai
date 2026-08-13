@@ -96,6 +96,8 @@ async def test_scope_shows_period_buttons(_db):
     markup = callback.message.answer.await_args.kwargs["reply_markup"]
     callbacks = [btn.callback_data for row in markup.inline_keyboard for btn in row]
     assert callbacks == ["inv:due:1", "inv:due:7", "inv:due:30"]
+    # Вопрос «Какие счета прислать?» удалён после выбора
+    callback.message.delete.assert_awaited_once()
 
 
 # ---------- выдача PDF ----------
@@ -111,6 +113,8 @@ async def test_period_sends_pdfs_in_range(_db):
     callback = _callback("inv:all:7")
     await cmd.handle_period(callback)
 
+    # Вопрос «За какой период?» удалён после выбора
+    callback.message.delete.assert_awaited_once()
     assert callback.bot.send_document.await_count == 2
     sent_files = sorted(
         c.kwargs["document"].filename

@@ -46,13 +46,14 @@ def _invoices_chat(settings: Settings) -> int | None:
 # Типы, которые фиксируем в БД без уведомления в Telegram (тикет 15).
 # Исключение — booking_confirmed с комментарием гостя: комментарий нужен
 # администраторам (отдельные письма-комментарии дублируются и молчат).
+# review_notification убран 13.08.2026 (решение владельца): отзывы (2ГИС,
+# Яндекс.Бизнес) показываем администраторам карточкой в основной группе.
 SILENT_TYPES = frozenset({
     "booking_confirmed",
     "booking_comment",
     "booking_modified",
     "booking_cancelled",
     "payment_received",
-    "review_notification",
     "unknown",
 })
 

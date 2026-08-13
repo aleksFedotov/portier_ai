@@ -1,7 +1,8 @@
 """Тикет 15: маршрутизация уведомлений.
 
 - unknown / booking_modified / booking_cancelled / payment_received /
-  review_notification / booking_comment — молча в БД, без Telegram;
+  booking_comment — молча в БД, без Telegram;
+- review_notification — карточка в основную группу (решение 13.08.2026);
 - booking_confirmed с комментарием гостя — уведомление в основную группу;
 - коды входа (Extranet/TravelLine/Ozon/Telegram) и accounting@travelline.ru —
   в третью группу; сверка 101hotels — лично владельцу.
@@ -70,7 +71,7 @@ def _msg_chat_id(bot):
 
 @pytest.mark.parametrize("llm_type", [
     "unknown", "booking_modified", "booking_cancelled",
-    "payment_received", "review_notification", "booking_comment",
+    "payment_received", "booking_comment",
 ])
 async def test_silent_types_no_telegram(monkeypatch, tmp_path, llm_type):
     """Эти типы фиксируем в БД, в основную группу не шлём."""
@@ -82,6 +83,19 @@ async def test_silent_types_no_telegram(monkeypatch, tmp_path, llm_type):
     assert record.status == EmailStatus.SUCCESS.value
     assert record.email_type == llm_type
     bot.send_message.assert_not_called()
+
+
+async def test_review_notification_sent_to_main_chat(monkeypatch, tmp_path):
+    """Отзыв (2ГИС/Яндекс.Бизнес) — карточка в основную группу (13.08.2026)."""
+    bot, record, _ = await _run_pipeline(
+        monkeypatch, tmp_path,
+        "Яндекс Бизнес <email@business.yandex.ru>",
+        "У вас новые отзывы для ЛиКи Лофт Отель",
+        llm_type="review_notification",
+    )
+    assert record.status == EmailStatus.SUCCESS.value
+    assert record.email_type == "review_notification"
+    assert _msg_chat_id(bot) == 111
 
 
 async def test_booking_confirmed_with_comment_notified(monkeypatch, tmp_path):
