@@ -153,9 +153,9 @@ async def test_agent_booking_becomes_invoice(monkeypatch, tmp_path):
         record = (await session.execute(select(ProcessedEmail))).scalars().one()
     assert record.status == EmailStatus.SUCCESS.value
     assert record.email_type == "invoice_required"
-    # Тикет 22: карточка и PDF счёта — в основную группу, не владельцу и не
-    # в группу счетов
-    assert bot.send_document.await_args.kwargs["chat_id"] == 111
+    # Тикет 22: карточка — в основную группу, не владельцу и не в группу
+    # счетов; PDF в чат не отправляется (решение владельца от 15.08.2026)
+    bot.send_document.assert_not_called()
     assert bot.send_message.await_args.kwargs["chat_id"] == 111
     text = bot.send_message.await_args.kwargs.get("text", "")
     assert "priemspb@pegast.ru" in text  # email агента, а не travellinemail

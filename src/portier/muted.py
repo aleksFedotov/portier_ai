@@ -36,14 +36,23 @@ def addr_matches(rule_addr: str, addr: str) -> bool:
     return addr == rule_addr
 
 
+def _norm(text: str) -> str:
+    """Нормализация для сравнения: нижний регистр, ё → е.
+
+    Каналы пишут темы то с «ё» («Гость внёс предоплату»), то с «е» —
+    правило на одну форму не должно пропускать другую.
+    """
+    return (text or "").lower().replace("ё", "е")
+
+
 def is_muted(sender: str, subject: str, rules: list[str]) -> bool:
     """True, если письмо попадает под хотя бы одно правило чёрного списка."""
     addr = _extract_addr(sender)
-    subj = (subject or "").lower()
+    subj = _norm(subject)
     for rule in rules:
         rule_addr, pattern = parse_rule(rule)
         if not rule_addr or not addr_matches(rule_addr, addr):
             continue
-        if pattern is None or pattern in subj:
+        if pattern is None or _norm(pattern) in subj:
             return True
     return False

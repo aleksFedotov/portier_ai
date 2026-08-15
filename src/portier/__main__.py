@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import sys
+from pathlib import Path
 
 from .bot import create_bot, create_dispatcher, polling_with_restart
 from .config import get_settings
@@ -11,13 +12,39 @@ from .gmail_client import GmailAuthError, gmail_loop, set_llm_client
 from .invoice_cleanup import invoice_cleanup_loop
 from .llm import create_llm_client
 
+LOG_FILE = Path("data/portier.log")
 
-async def main() -> None:
+
+def _setup_logging() -> None:
+    """Лог в консоль и в data/portier.log.
+
+    Файл нужен для режима службы (Task Scheduler + pythonw): консоли нет,
+    лог смотрим в файле. Под pythonw sys.stdout/sys.stderr равны None —
+    подменяем devnull'ом, иначе падают библиотеки, пишущие в stdout
+    (uvicorn при настройке своего логирования).
+    """
+    import os
+
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, "w", encoding="utf-8")
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, "w", encoding="utf-8")
+    LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    handlers: list[logging.Handler] = [
+        logging.FileHandler(LOG_FILE, encoding="utf-8")
+    ]
+    if sys.stdout is not None and sys.stdout.name != os.devnull:
+        handlers.append(logging.StreamHandler(sys.stdout))
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-        stream=sys.stdout,
+        handlers=handlers,
+        force=True,
     )
+
+
+async def main() -> None:
+    _setup_logging()
     settings = get_settings()
 
     if not settings.TELEGRAM_BOT_TOKEN or settings.TELEGRAM_CHAT_ID is None:

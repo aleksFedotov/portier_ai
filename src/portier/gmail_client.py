@@ -108,7 +108,7 @@ LABEL_OK_STATUSES = frozenset({
 MAX_INVOICE_ACTION_ATTEMPTS = 10
 
 # Действия счёта, чьи попытки суммируются для лимита MAX_INVOICE_ACTION_ATTEMPTS.
-INVOICE_ACTION_TYPES = ("invoice_pdf_document", "invoice_gmail_draft")
+INVOICE_ACTION_TYPES = ("invoice_gmail_draft",)
 
 
 def _is_transient_gmail_error(exc: Exception) -> bool:
@@ -854,7 +854,9 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
         # админам — до проверки молчаливых типов (booking_confirmed сам по
         # себе в чат не идёт). is_agent_booking — исходный тип
         # booking_confirmed, до возможной конвертации в invoice_required.
-        if is_agent_booking:
+        # 14.08.2026: брони Яндекс Путешествий приходят как booking_modified —
+        # им напоминание о заезде тоже нужно (владелец поймал пропуск).
+        if is_agent_booking or result.type == "booking_modified":
             checkin_notice = _build_checkin_notice(result)
             if checkin_notice:
                 await _run_action(
@@ -1179,14 +1181,15 @@ async def _prepare_invoice_note(
     result, settings: Settings, gmail: GmailClient, bot, record, session,
     agent=None,
 ) -> str | None:
-    """Для invoice_required: реестр → PDF → файл в основную группу → текст пометки.
+    """Для invoice_required: реестр → PDF на диск → черновик в Gmail → пометки.
 
-    Тикет 27: каждый счёт также сохраняется черновиком в Gmail (кому — email
+    Тикет 27: каждый счёт сохраняется черновиком в Gmail (кому — email
     заказчика из реестра/агента) — страховка от потери счёта и готовое письмо
     для ручной отправки. Автоотправка черновиков — тикет 12.
     agent — запись справочника агентов (тикет 13): подставляет email для счёта
     и пометку о корректировке цены.
     Путь к PDF сохраняется в record.invoice_pdf (тикет 06: команда /invoices).
+    В основную группу PDF не шлём (решение владельца от 15.08.2026).
     """
     if result.type != "invoice_required":
         return None
@@ -1222,21 +1225,8 @@ async def _prepare_invoice_note(
     record.invoice_pdf = str(pdf_path)
     await session.commit()
 
-    caption = f"📎 Счёт для {data.to} — проверьте перед отправкой"
-    # Под идемпотентностью (тикет 23) — только отправка: PDF перегенерируется
-    # (файл перезаписывается), текст пометки строится в любом случае — он нужен
-    # для карточки при повторной обработке.
-    await _run_action(
-        session, record.id, "invoice_pdf_document",
-        lambda: send_document(
-            bot,
-            settings.TELEGRAM_CHAT_ID,
-            filename=pdf_path.name,
-            data=pdf_path.read_bytes(),
-            caption=caption,
-        ),
-    )
-
+    # PDF в основную группу не отправляем (решение владельца от 15.08.2026):
+    # счёт доступен через /invoices и лежит в черновике Gmail ниже.
     # Черновик в Gmail (тикет 27). MIME детерминирован — пересобираем при
     # повторах; внешнее действие (create_draft) под идемпотентностью.
     # В теме — #<номер брони канала> (Ostrovok/Bronevik/…), чтобы черновики
@@ -1260,7 +1250,6 @@ async def _prepare_invoice_note(
     )
 
     notes = [
-        caption,
         f"✉️ Черновик со счётом сохранён в Gmail (кому: {data.to})",
     ]
     if agent is not None and agent.price_note:

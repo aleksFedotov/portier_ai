@@ -42,6 +42,13 @@ def test_is_muted_case_insensitive():
     assert is_muted("a@b.ru", "СТАТИСТИКА ЗА НЕДЕЛЮ для отеля", ["a@b.ru|статистика за неделю"])
 
 
+def test_is_muted_yo_e_equivalent():
+    """«ё» и «е» в теме/шаблоне равнозначны (Суточно.ру пишет «внёс»)."""
+    rules = ["info@sutochno.ru|гость внес предоплату"]
+    assert is_muted("Суточно.ру <info@sutochno.ru>", "Гость внёс предоплату за бронь", rules)
+    assert is_muted("Суточно.ру <info@sutochno.ru>", "Гость внес предоплату за бронь", rules)
+
+
 def test_default_rules_do_not_mute_bookings():
     """Страховка: дефолтный чёрный список не цепляет рабочие письма."""
     settings = Settings(OPENAI_API_KEY="k")

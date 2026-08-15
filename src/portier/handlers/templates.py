@@ -81,7 +81,7 @@ def build_notification(
     elif t == "invoice_required":
         inv = r.invoice
         text = (
-            f"📄 <b>Счёт готов (PDF выше)</b>\n\n"
+            f"📄 <b>Счёт готов</b>\n\n"
             f"📧 Отправитель: {esc(sender)}\n"
             f"🏢 Компания: {esc(inv.company_name if inv else None)}\n"
             f"💰 Сумма: {esc(inv.amount if inv else None)}\n"

@@ -238,6 +238,25 @@ async def test_checkin_not_today_silent(monkeypatch, tmp_path):
     bot.send_message.assert_not_called()
 
 
+async def test_checkin_notice_for_booking_modified(monkeypatch, tmp_path):
+    """Брони Яндекса приходят как booking_modified — заезд сегодня
+    всё равно должен уведомить админов (решение владельца 14.08.2026)."""
+    today = date.today()
+    bot, record, _ = await _run_pipeline(
+        monkeypatch, tmp_path,
+        "TravelLine <noreply@travellinemail.com>",
+        "Изменение бронирования № YA-6097-9993-4907:0. Яндекс Путешествия",
+        llm_type="booking_modified",
+        arrival_date=today.isoformat(),
+        departure_date=(today + timedelta(days=1)).isoformat(),
+    )
+    assert record.email_type == "booking_modified"
+    bot.send_message.assert_awaited_once()
+    text = bot.send_message.await_args.kwargs.get("text", "")
+    assert "Сегодня новый заезд" in text
+    assert "выезд на завтра" in text
+
+
 # ---------- коды входа и расчётный отдел → третья группа ----------
 
 

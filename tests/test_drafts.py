@@ -155,7 +155,7 @@ def test_build_draft_mime(tmp_path):
 
 # ---------- сквозной сценарий ----------
 
-async def _run_pipeline(monkeypatch, tmp_path, result, *, send_document_fails=False, companies=()):
+async def _run_pipeline(monkeypatch, tmp_path, result, *, companies=()):
     """Прогнать process_email на моках, вернуть (gmail_mock, bot_mock)."""
     init_engine("sqlite+aiosqlite:///:memory:")
     await init_db()
@@ -180,8 +180,6 @@ async def _run_pipeline(monkeypatch, tmp_path, result, *, send_document_fails=Fa
         create_draft=AsyncMock(return_value="draft-42"),
     )
     bot = AsyncMock()
-    if send_document_fails:
-        bot.send_document.side_effect = RuntimeError("Telegram недоступен")
     await gmail_client.process_email(gmail, bot, _settings(tmp_path), "gmail-id-1")
     return gmail, bot
 
@@ -208,8 +206,8 @@ async def test_invoice_pipeline_happy_path(monkeypatch, tmp_path):
         monkeypatch, tmp_path, result, companies=[company]
     )
 
-    # Тикет 27: черновик со счётом создаётся в Gmail (адресат — из реестра),
-    # PDF уходит документом в общий чат
+    # Тикет 27: черновик со счётом создаётся в Gmail (адресат — из реестра);
+    # PDF в чат не отправляется (решение владельца от 15.08.2026)
     gmail.create_draft.assert_awaited_once()
     raw = gmail.create_draft.await_args.args[0]
     import base64
@@ -220,11 +218,7 @@ async def test_invoice_pipeline_happy_path(monkeypatch, tmp_path):
     assert message["To"] == "buh@romashka.ru"
     subject = str(decode_header(message["Subject"])[0][0], "utf-8")
     assert subject == "Счёт за проживание в отеле #1206313115"  # реестр + #бронь
-    bot.send_document.assert_awaited_once()
-    doc_kwargs = bot.send_document.await_args.kwargs
-    assert doc_kwargs["chat_id"] == -100123
-    assert doc_kwargs["document"].filename.endswith(".pdf")
-    assert "buh@romashka.ru" in doc_kwargs["caption"]
+    bot.send_document.assert_not_called()
 
     # PDF лежит в INVOICES_DIR
     pdfs = list((tmp_path / "invoices").glob("*.pdf"))
@@ -254,25 +248,10 @@ async def test_invoice_pipeline_unknown_company(monkeypatch, tmp_path):
     gmail, bot = await _run_pipeline(monkeypatch, tmp_path, result)
 
     # Тикет 27: черновик создаётся и для новой компании (адресат — отправитель);
-    # PDF уходит в чат
+    # PDF в чат не отправляется
     gmail.create_draft.assert_awaited_once()
-    bot.send_document.assert_awaited_once()
-    assert "buh@romashka.ru" in bot.send_document.await_args.kwargs["caption"]
+    bot.send_document.assert_not_called()
 
     text = bot.send_message.await_args.kwargs["text"]
     assert "Новая компания — добавьте в реестр" in text
 
-
-async def test_invoice_pipeline_send_document_failure(monkeypatch, tmp_path):
-    """Сбой отправки PDF в чат: письмо помечается ERROR, админу уходит ⚠️."""
-    result = _invoice_result(company_name="ООО «Сбой»", amount="1000")
-    gmail, bot = await _run_pipeline(
-        monkeypatch, tmp_path, result, send_document_fails=True
-    )
-
-    record = await _get_record()
-    assert record.status == "ERROR"
-
-    bot.send_message.assert_awaited_once()
-    text = bot.send_message.await_args.kwargs["text"]
-    assert "Не удалось обработать письмо" in text
