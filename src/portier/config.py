@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     # "primary" — основной календарь рабочего аккаунта; лучше завести
     # отдельный календарь «Задачи» и прописать сюда его id.
     CALENDAR_ID: str = "primary"
-    CALENDAR_POLL_SECONDS: int = 60
+    CALENDAR_POLL_SECONDS: int = 300
 
     # Важные алерты → третья группа (правила как в MUTED_SENDERS).
     ALERT_RULES: list[str] = [
