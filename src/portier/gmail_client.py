@@ -125,6 +125,8 @@ SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.compose",
     "https://www.googleapis.com/auth/gmail.modify",
+    # Напоминания о задачах из Google Календаря (calendar_tasks.py)
+    "https://www.googleapis.com/auth/calendar.readonly",
 ]
 
 _HEADER_NAMES = ["Message-ID", "From", "Subject", "Date"]
@@ -142,7 +144,10 @@ def get_credentials(settings: Settings):
     token_file = settings.GOOGLE_TOKEN_FILE
     creds = None
     if os.path.exists(token_file):
-        creds = Credentials.from_authorized_user_file(token_file, SCOPES)
+        # Scope'ы не передаём: refresh пойдёт со scope'ами, выданными при
+        # авторизации. Иначе расширение SCOPES (например, +calendar) ломает
+        # refresh старого токена (invalid_scope) и роняет весь бот.
+        creds = Credentials.from_authorized_user_file(token_file)
     if creds and creds.expired and creds.refresh_token:
         try:
             creds.refresh(Request())

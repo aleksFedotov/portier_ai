@@ -97,6 +97,46 @@ async def stamp_and_draft(email: ProcessedEmail) -> str:
     )
 
 
+@router.callback_query(F.data.startswith("cal:"))
+async def handle_calendar_done(callback: CallbackQuery) -> None:
+    """«✅ Выполнено» по задаче из Google Календаря (calendar_tasks.py)."""
+    from .models import CalendarTask
+
+    event_id = (callback.data or "")[4:]
+    user = callback.from_user
+    admin_name = (
+        f"{user.full_name} (@{user.username})" if user and user.username
+        else (user.full_name if user else "админ")
+    )
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        task = (await session.execute(
+            select(CalendarTask).where(CalendarTask.event_id == event_id)
+        )).scalar_one_or_none()
+        if task is None:
+            await callback.answer("Задача не найдена в базе")
+            return
+        if task.done_at is not None:
+            await callback.answer("Уже отмечено")
+            return
+        from datetime import datetime
+
+        task.done_at = datetime.utcnow()
+        task.done_by = admin_name
+        await session.commit()
+        title = task.title
+        done_at = task.done_at
+
+    msg = callback.message
+    await msg.edit_text(
+        f"✅ Выполнено: {esc(title)}\n"
+        f"👤 {esc(admin_name)}, {done_at:%d.%m.%Y %H:%M}"
+    )
+    await callback.answer("Отмечено")
+    logger.info("Задачу календаря %s отметил %s", event_id, admin_name)
+
+
 @router.callback_query(F.data.startswith("action:"))
 async def handle_action(callback: CallbackQuery) -> None:
     parsed = parse_callback_data(callback.data or "")

@@ -95,6 +95,21 @@ class ActionLog(Base):
     )
 
 
+class CalendarTask(Base):
+    """Задача-напоминание из Google Календаря, о которой уже слали в чат."""
+
+    __tablename__ = "calendar_tasks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    event_id: Mapped[str] = mapped_column(String, unique=True, index=True)
+    title: Mapped[str] = mapped_column(Text, default="")
+    due_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    notified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    done_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    done_by: Mapped[str] = mapped_column(String, default="")
+    tg_message_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
 class Company(Base):
     """Компания-заказчик: реквизиты для счетов и шаблон темы письма."""
 

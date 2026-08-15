@@ -90,12 +90,15 @@ async def main() -> None:
         )
     )
 
+    from .calendar_tasks import calendar_loop
+
     try:
         await asyncio.gather(
             gmail_loop(settings, bot),
             polling_with_restart(dp, bot),
             web_server.serve(),
             invoice_cleanup_loop(bot, settings),  # тикет 18
+            calendar_loop(bot, settings),
         )
     except GmailAuthError as exc:
         raise SystemExit(str(exc))

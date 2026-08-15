@@ -69,6 +69,12 @@ class Settings(BaseSettings):
     # («Счёт отправлен» и «Оплачен»). PDF-документы не трогаем.
     INVOICE_CARD_TTL_HOURS: int = 24
 
+    # Google Calendar: напоминания о задачах-событиях в основной чат.
+    # "primary" — основной календарь рабочего аккаунта; лучше завести
+    # отдельный календарь «Задачи» и прописать сюда его id.
+    CALENDAR_ID: str = "primary"
+    CALENDAR_POLL_SECONDS: int = 60
+
     # Важные алерты → третья группа (правила как в MUTED_SENDERS).
     ALERT_RULES: list[str] = [
         "support@travelline.ru|возможный овербукинг",
