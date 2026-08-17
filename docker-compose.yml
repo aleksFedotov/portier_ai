@@ -6,6 +6,6 @@ services:
     # host-сеть даёт контейнеру IPv6 хоста: у провайдера IPv4 до
     # api.telegram.org заблокирован, а по IPv6 всё ходит.
     network_mode: host
-    env_file: .env
+    env_file: /opt/portier_ai/.env
     volumes:
-      - ./data:/app/data
+      - /opt/portier_ai/data:/app/data
