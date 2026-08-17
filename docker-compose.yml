@@ -2,6 +2,10 @@ services:
   email-bot:
     build: .
     restart: always
+    # Бот только ходит наружу (Gmail/Telegram), входящих портов нет.
+    # host-сеть даёт контейнеру IPv6 хоста: у провайдера IPv4 до
+    # api.telegram.org заблокирован, а по IPv6 всё ходит.
+    network_mode: host
     env_file: .env
     volumes:
       - ./data:/app/data
