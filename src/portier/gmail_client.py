@@ -79,6 +79,15 @@ _SERVICE_COMMENT_TYPES = frozenset(
     {"booking_comment", "guest_message", "booking_confirmed"}
 )
 
+# Комментарий, который лишь повторяет состав гостей из деталей брони
+# («Гостей 3: дети 1», «2 взрослых + ребёнок») — не запрос к отелю,
+# состав и так виден в карточке: уведомление не шлём (решение владельца
+# 15.08.2026).
+_REDUNDANT_COMMENT_RE = re.compile(
+    r"^[\W_]*(?:гост\w*|взросл\w*|дет\w*|реб[ёе]н\w*|младен\w*|лет|года?|[\d\s:;,+()/—–-])+[\W_]*$",
+    re.IGNORECASE,
+)
+
 # Брони Яндекс Путешествий приходят письмами «изменение бронирования», а не
 # «новое бронирование» — напоминание «отредактируйте бронь» (тикет 30) шлём
 # им и по booking_modified (решение владельца 11.08.2026).
@@ -886,7 +895,17 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
                 "Письмо %s — сервисный комментарий канала (контакты гостя), "
                 "уведомление не шлём", gmail_id,
             )
-        if service_comment or (
+        redundant_comment = (
+            result.type in _SERVICE_COMMENT_TYPES
+            and bool(result.comment_details)
+            and bool(_REDUNDANT_COMMENT_RE.match(result.comment_details.strip()))
+        )
+        if redundant_comment:
+            logger.info(
+                "Письмо %s — комментарий лишь повторяет состав гостей, "
+                "уведомление не шлём", gmail_id,
+            )
+        if service_comment or redundant_comment or (
             result.type in SILENT_TYPES and not (
                 result.type == "booking_confirmed" and result.comment_details
             )

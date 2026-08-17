@@ -161,6 +161,20 @@ async def test_real_comment_still_notified(monkeypatch, tmp_path):
     bot.send_message.assert_awaited_once()
 
 
+async def test_guest_count_comment_silent(monkeypatch, tmp_path):
+    """«Гостей 3: дети 1» лишь повторяет состав гостей из деталей брони —
+    уведомление не шлём (решение владельца 15.08.2026)."""
+    bot, record, _ = await _run_pipeline(
+        monkeypatch, tmp_path,
+        "Суточно.ру <noreply@sutochno.ru>",
+        "Подтверждение бронирования №43766572",
+        llm_type="booking_confirmed",
+        comment_details="Гостей 3: дети 1",
+    )
+    assert record.status == EmailStatus.SUCCESS.value
+    bot.send_message.assert_not_called()
+
+
 # ---------- заезд сегодня: план уборки админам ----------
 
 
