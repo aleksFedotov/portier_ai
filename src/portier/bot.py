@@ -50,8 +50,10 @@ def create_dispatcher() -> Dispatcher:
     from .callbacks import router as callbacks_router
     from .handlers.invoices_cmd import router as invoices_router
     from .handlers.owner_invoice import router as owner_invoice_router
+    from .handlers.ping import router as ping_router
 
     dp = Dispatcher()
+    dp.include_router(ping_router)  # /ping — проверка живости
     dp.include_router(callbacks_router)
     dp.include_router(invoices_router)  # тикет 06: /invoices в чате счетов
     dp.include_router(owner_invoice_router)  # счёт от владельца → группа счетов
