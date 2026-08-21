@@ -1220,6 +1220,7 @@ async def _prepare_invoice_note(
     from .drafts import (
         build_draft_body,
         build_draft_mime,
+        find_booking_facts,
         find_company,
         merge_invoice_data,
     )
@@ -1229,6 +1230,24 @@ async def _prepare_invoice_note(
     # Данные реестра компаний в приоритете над LLM-извлечёнными
     company = await find_company(session, sender, result.invoice)
     data = merge_invoice_data(result, sender, company)
+
+    # Заявки агентов (Броневик) приходят без цены и внутреннего ID TravelLine —
+    # дозаполняем из прошлых писем по той же брони (подтверждение TravelLine).
+    if result.booking_number and (not data.invoice.amount or not result.internal_booking_id):
+        facts = await find_booking_facts(session, result.booking_number, exclude_id=record.id)
+        if facts:
+            if not data.invoice.amount and facts["amount"]:
+                data.invoice.amount = facts["amount"]
+                logger.info(
+                    "Сумма счёта по брони %s взята из прошлого письма: %s",
+                    result.booking_number, facts["amount"],
+                )
+            if not result.internal_booking_id and facts["internal_booking_id"]:
+                result.internal_booking_id = facts["internal_booking_id"]
+                logger.info(
+                    "Внутренний ID по брони %s взят из прошлого письма: %s",
+                    result.booking_number, facts["internal_booking_id"],
+                )
     if agent is not None and agent.invoice_email:
         data.to = agent.invoice_email
 

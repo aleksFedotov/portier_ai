@@ -62,12 +62,25 @@ def _register_fonts() -> dict:
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
 
+    registered = set()
     for kind, candidates in _FONT_CANDIDATES.items():
         for path, name in candidates:
             if Path(path).exists():
                 pdfmetrics.registerFont(TTFont(name, path))
                 _FONTS[kind] = name
+                registered.add(kind)
                 break
+    # TTF для курсива/болда не нашёлся (напр., на сервере нет *-Oblique) —
+    # подставляем обычный Unicode-шрифт: базовая Helvetica кириллицу не
+    # рисует, и сумма прописью в PDF выходит «квадратами».
+    if "regular" in registered:
+        for kind in ("bold", "italic"):
+            if kind not in registered:
+                logger.warning(
+                    "TTF для %s не найден — в PDF используем %s",
+                    kind, _FONTS["regular"],
+                )
+                _FONTS[kind] = _FONTS["regular"]
     _fonts_registered = True
     return _FONTS
 

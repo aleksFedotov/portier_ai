@@ -11,7 +11,7 @@ from pathlib import Path
 
 from sqlalchemy import select
 
-from .models import Company
+from .models import Company, ProcessedEmail
 from .schemas import EmailAnalysisResult, InvoiceDetails
 
 logger = logging.getLogger(__name__)
@@ -101,6 +101,42 @@ async def find_company(
             ):
                 return company
     return None
+
+
+async def find_booking_facts(
+    session, booking_number: str, exclude_id: int | None = None
+) -> dict | None:
+    """Сумма и внутренний ID TravelLine из прошлых писем по той же брони.
+
+    Письма-заявки агентов (Броневик, billing@bronevik.online) приходят без
+    цены и без внутреннего ID — они есть только в подтверждении брони от
+    TravelLine. Берём самое свежее известное значение каждого поля среди
+    писем с тем же booking_number. None, если ничего не нашлось.
+    """
+    if not booking_number:
+        return None
+    rows = (
+        await session.execute(
+            select(ProcessedEmail.id, ProcessedEmail.llm_result)
+            .where(ProcessedEmail.llm_result.is_not(None))
+            .order_by(ProcessedEmail.processed_at.desc())
+        )
+    ).all()
+    amount = internal_id = None
+    for row_id, payload in rows:
+        if exclude_id is not None and row_id == exclude_id:
+            continue  # текущее письмо — источник пустых полей, а не данных
+        if not payload or str(payload.get("booking_number") or "") != booking_number:
+            continue
+        if amount is None:
+            amount = (payload.get("invoice") or {}).get("amount")
+        if internal_id is None:
+            internal_id = payload.get("internal_booking_id")
+        if amount and internal_id:
+            break
+    if amount is None and internal_id is None:
+        return None
+    return {"amount": amount, "internal_booking_id": internal_id}
 
 
 def build_draft_mime(to: str, subject: str, body_text: str, pdf_path: Path) -> str:

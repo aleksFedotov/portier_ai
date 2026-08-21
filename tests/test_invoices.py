@@ -197,3 +197,36 @@ def test_pii_unmask_invoice_fields():
     _unmask_result(result, {"[GUEST_1]": "Иван Петров"})
     assert result.invoice.description == "Контакт: Иван Петров"
     assert result.comment_details == "Просит Иван Петров"
+
+
+def test_font_fallback_to_regular(monkeypatch):
+    """Нет TTF для курсива/болда — подставляем обычный Unicode-шрифт,
+    иначе базовая Helvetica рисует кириллицу «квадратами» (сумма прописью)."""
+    from portier import invoices
+
+    class _FakePath:
+        def __init__(self, path):
+            self.path = str(path)
+
+        def exists(self):
+            return self.path == "/fake/regular.ttf"
+
+    monkeypatch.setattr(invoices, "_FONT_CANDIDATES", {
+        "regular": [("/fake/regular.ttf", "FakeRegular")],
+        "bold": [("/fake/bold.ttf", "FakeBold")],
+        "italic": [("/fake/italic.ttf", "FakeItalic")],
+    })
+    monkeypatch.setattr(invoices, "_FONTS", {
+        "regular": "Helvetica", "bold": "Helvetica-Bold", "italic": "Helvetica-Oblique",
+    })
+    monkeypatch.setattr(invoices, "_fonts_registered", False)
+    monkeypatch.setattr(invoices, "Path", _FakePath)
+    from reportlab.pdfbase import pdfmetrics
+
+    monkeypatch.setattr(pdfmetrics, "registerFont", lambda font: None)
+    monkeypatch.setattr("reportlab.pdfbase.ttfonts.TTFont", lambda name, path: object())
+
+    fonts = invoices._register_fonts()
+    assert fonts["regular"] == "FakeRegular"
+    assert fonts["bold"] == "FakeRegular"
+    assert fonts["italic"] == "FakeRegular"

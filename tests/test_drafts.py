@@ -3,6 +3,7 @@
 import base64
 import email
 import email.policy
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -14,6 +15,7 @@ from portier.db import init_db, init_engine, get_session_factory
 from portier.drafts import (
     DEFAULT_SUBJECT,
     build_draft_mime,
+    find_booking_facts,
     find_company,
     merge_invoice_data,
     parse_sender_email,
@@ -155,7 +157,7 @@ def test_build_draft_mime(tmp_path):
 
 # ---------- сквозной сценарий ----------
 
-async def _run_pipeline(monkeypatch, tmp_path, result, *, companies=()):
+async def _run_pipeline(monkeypatch, tmp_path, result, *, companies=(), prior=()):
     """Прогнать process_email на моках, вернуть (gmail_mock, bot_mock)."""
     init_engine("sqlite+aiosqlite:///:memory:")
     await init_db()
@@ -163,6 +165,8 @@ async def _run_pipeline(monkeypatch, tmp_path, result, *, companies=()):
     async with get_session_factory()() as session:
         for company in companies:
             session.add(company)
+        for record in prior:
+            session.add(record)
         await session.commit()
 
     monkeypatch.setattr(
@@ -255,3 +259,105 @@ async def test_invoice_pipeline_unknown_company(monkeypatch, tmp_path):
     text = bot.send_message.await_args.kwargs["text"]
     assert "Новая компания — добавьте в реестр" in text
 
+
+
+# ---------- дозаполнение счёта из прошлых писем по брони ----------
+
+
+def _email_record(message_id, booking_number, *, amount=None, internal_id=None,
+                  processed_at=datetime(2026, 8, 10, 12, 0, 0)):
+    """Прошлое письмо по брони (подтверждение TravelLine и т.п.)."""
+    return ProcessedEmail(
+        message_id=message_id,
+        uid=1,
+        gmail_id="",
+        sender="noreply@travellinemail.com",
+        subject=f"Подтверждение бронирования №{booking_number}",
+        processed_at=processed_at,
+        email_type="booking_confirmed",
+        raw_payload="",
+        llm_result={
+            "booking_number": booking_number,
+            "internal_booking_id": internal_id,
+            "invoice": {"amount": amount},
+        },
+        status="SUCCESS",
+    )
+
+
+async def test_find_booking_facts(session_factory):
+    async with session_factory() as session:
+        session.add(_email_record(
+            "<c1@x>", "62107414", amount="14227 RUB",
+            internal_id="20260819-7348-457341008",
+        ))
+        await session.commit()
+        facts = await find_booking_facts(session, "62107414")
+        assert facts == {
+            "amount": "14227 RUB",
+            "internal_booking_id": "20260819-7348-457341008",
+        }
+
+
+async def test_find_booking_facts_latest_wins(session_factory):
+    """Свежая цена (изменение брони) важнее старой; поля собираются по отдельности."""
+    async with session_factory() as session:
+        session.add(_email_record(
+            "<c1@x>", "62107414", amount="14227 RUB",
+            internal_id="20260819-7348-457341008",
+            processed_at=datetime(2026, 8, 10),
+        ))
+        session.add(_email_record(
+            "<c2@x>", "62107414", amount="15000 RUB",
+            processed_at=datetime(2026, 8, 15),
+        ))
+        await session.commit()
+        facts = await find_booking_facts(session, "62107414")
+        assert facts["amount"] == "15000 RUB"
+        assert facts["internal_booking_id"] == "20260819-7348-457341008"
+
+
+async def test_find_booking_facts_excludes_current(session_factory):
+    """Текущее письмо (без суммы) не должно быть источником данных."""
+    async with session_factory() as session:
+        current = _email_record("<cur@x>", "62107414")
+        session.add(current)
+        await session.commit()
+        assert await find_booking_facts(session, "62107414", exclude_id=current.id) is None
+
+
+async def test_find_booking_facts_no_match(session_factory):
+    async with session_factory() as session:
+        session.add(_email_record("<c1@x>", "999", amount="100"))
+        await session.commit()
+        assert await find_booking_facts(session, "62107414") is None
+        assert await find_booking_facts(session, "") is None
+
+
+async def test_invoice_pipeline_amount_from_previous_email(monkeypatch, tmp_path):
+    """Заявка Броневика без цены: сумма и ID счёта берутся из подтверждения брони."""
+    from portier import invoices
+
+    captured = {}
+    real_generate = invoices.generate_invoice_pdf
+
+    def spy(result_arg, settings_arg):
+        captured["result"] = result_arg
+        return real_generate(result_arg, settings_arg)
+
+    monkeypatch.setattr(invoices, "generate_invoice_pdf", spy)
+
+    prior = _email_record(
+        "<confirm@x>", "62107414", amount="14227 RUB",
+        internal_id="20260819-7348-457341008",
+    )
+    result = _invoice_result(
+        company_name="ООО «Компания Броневик»",
+        arrival_date="2026-08-19", departure_date="2026-08-22",
+    )
+    result = result.model_copy(update={"booking_number": "62107414"})
+    await _run_pipeline(monkeypatch, tmp_path, result, prior=[prior])
+
+    used = captured["result"]
+    assert used.invoice.amount == "14227 RUB"
+    assert used.internal_booking_id == "20260819-7348-457341008"
