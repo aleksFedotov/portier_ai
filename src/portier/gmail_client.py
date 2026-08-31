@@ -816,8 +816,28 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
         # invoice_on_booking → счёт. Правило работает от справочника, не от LLM.
         from .agents import match_agent
         from .schemas import InvoiceDetails
+        # Внутренний ID TravelLine парсим из тела детерминированно (не через LLM):
+        # из него строится номер счёта
+        from .invoices import extract_travelline_id
 
+        travelline_id = extract_travelline_id(body_text)
         agent = await match_agent(session, record.subject, result.channel_name)
+        # Подтверждение брони TravelLine без агента из справочника (бронь с сайта
+        # отеля) с оплатой «Безналичный расчет» от юрлица — это НЕ запрос счёта:
+        # счёт не для нас. LLM часто помечает такие invoice_required из-за
+        # реквизитов плательщика — понижаем до booking_confirmed.
+        if (
+            result.type == "invoice_required"
+            and agent is None
+            and travelline_id is not None
+        ):
+            logger.info(
+                "Письмо %s — подтверждение брони TravelLine (ID %s) без агента: "
+                "тип invoice_required понижен до booking_confirmed",
+                gmail_id, travelline_id,
+            )
+            result.type = "booking_confirmed"
+
         # Тикет 30: запоминаем, что это подтверждение брони от агента, —
         # по нему админу уходит напоминание «отредактируйте бронирование»
         is_agent_booking = result.type == "booking_confirmed"
@@ -838,11 +858,7 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
             result.type = "guest_message"
 
         record.email_type = result.type
-        # Внутренний ID TravelLine парсим из тела детерминированно (не через LLM):
-        # из него строится номер счёта
-        from .invoices import extract_travelline_id
-
-        result.internal_booking_id = extract_travelline_id(body_text)
+        result.internal_booking_id = travelline_id
         record.llm_result = result.model_dump()
         record.pii_map = mapping
         await session.commit()
