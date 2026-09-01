@@ -193,6 +193,28 @@ def test_ticket21_muted_rules():
     assert is_muted('Компания Яндекс <info-noreply@support.yandex.ru>', "Переход на использование УПД с 01.08.26г.", rules)
 
 
+def test_bronevik_invoice_request_muted():
+    """«Просьба выставить счет за услугу #…» от billing@bronevik.online — глушим
+    (решение владельца 31.08.2026): счёт по таким письмам не выставляем.
+    Заявки агентов с того же адреса — не трогаем."""
+    settings = Settings(OPENAI_API_KEY="k")
+    rules = settings.MUTED_SENDERS
+    sender = "Bronevik.com <billing@bronevik.online>"
+    assert is_muted(sender, "Просьба выставить счет за услугу #62759589", rules)
+    assert not is_muted(sender, "Вопрос по оплате услуги #62759589", rules)
+
+
+async def test_pipeline_bronevik_invoice_request_muted(monkeypatch, tmp_path):
+    _, bot, record, analyze = await _run_pipeline(
+        monkeypatch, tmp_path,
+        "Bronevik.com <billing@bronevik.online>",
+        "Просьба выставить счет за услугу #62759589",
+    )
+    assert record.status == EmailStatus.SKIPPED.value
+    analyze.assert_not_awaited()
+    bot.send_message.assert_not_called()
+
+
 def test_2gis_review_not_muted():
     """2ГИС «клиент ждёт ответа на отзыв» обрабатываем как отзыв, не глушим
     (решение владельца 13.08.2026)."""
