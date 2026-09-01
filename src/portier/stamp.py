@@ -2,9 +2,9 @@
 
 Входящие документы (счета-фактуры, акты сверки) приходят чужими PDF —
 перегенерировать их нельзя, поэтому reportlab'ом рисуем overlay-страницу
-с печатью/подписью и сливаем её с последней страницей документа через
-pypdf (там обычно место подписей). Расшифровка (caption) — опционально,
-добавляется настройкой SIGNATURE_CAPTION.
+с печатью/подписью и сливаем её через pypdf со страницей, где найден якорь
+зоны подписи (обычно последняя, но блок подписей бывает и на предпоследней).
+Расшифровка (caption) — опционально, добавляется настройкой SIGNATURE_CAPTION.
 
 Место подписи ищем автоматически, по цепочке fallback:
 0. Шаблон из stamp_templates.yaml (разметка владельца цветными рамками на
@@ -341,10 +341,27 @@ def stamp_pdf(data: bytes, settings: Settings, caption: str | None = None) -> by
     if template:
         logger.info("Документ совпал с шаблоном печати %r (%d меток)",
                     template.name, len(template.marks))
+
+    # Целевая страница — последняя с текстовым якорем зоны подписи: блок
+    # подписей не обязан быть на последнем листе (отчёт Броневика за 08.2026:
+    # «ПОДПИСИ СТОРОН» на стр. 1 из 2). Якорей нет нигде — как раньше: черта
+    # подписи на последней странице, затем fallback в её правый нижний угол.
+    target_index = last_index
+    target_anchor = None
     for i, page in enumerate(reader.pages):
-        if i == last_index:
+        anchor = find_anchor(data, i, float(page.mediabox.height))
+        if anchor is not None:
+            target_index, target_anchor = i, anchor
+    if target_anchor is None:
+        logger.info("Якорей нет ни на одной странице — черта/fallback на последней")
+    elif target_index != last_index:
+        logger.info("Якорь подписи на стр. %d (последняя — %d): ставим туда",
+                    target_index + 1, last_index + 1)
+
+    for i, page in enumerate(reader.pages):
+        if i == target_index:
             page_height = float(page.mediabox.height)
-            anchor = find_anchor(data, i, page_height)
+            anchor = target_anchor
             placements = None
             if template and anchor:
                 placements = template.marks

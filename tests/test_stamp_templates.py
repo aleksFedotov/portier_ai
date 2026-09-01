@@ -104,3 +104,38 @@ def test_stamp_pdf_without_templates_file_still_works(tmp_path):
     )
     out = stamp_pdf(_blank_pdf("____________________"), settings)
     assert out.startswith(b"%PDF")
+
+
+def _two_page_pdf() -> bytes:
+    """Стр. 1 — блок подписей (якорь «ООО "Орон"»), стр. 2 — без якорей."""
+    from portier.invoices import _register_fonts
+
+    font = _register_fonts()["regular"]
+    buf = io.BytesIO()
+    pdf = canvas.Canvas(buf)
+    pdf.setFont(font, 10)
+    pdf.drawString(400, 200, 'ООО "Орон" (ИНН 7841046976)')
+    pdf.showPage()
+    pdf.drawString(50, 700, "Приложение без подписей")
+    pdf.save()
+    return buf.getvalue()
+
+
+def test_stamp_pdf_targets_anchor_page_not_last():
+    """Блок подписей на стр. 1 из 2 (отчёт Броневика 08.2026): печать и
+    расшифровка ставятся туда, а не в правый нижний угол последней страницы."""
+    settings = SimpleNamespace(
+        INVOICE_STAMP_PATH="data/печать 2-Photoroom.png",
+        INVOICE_SIGNATURE_PATH="data/подпись 2-Photoroom.png",
+        SIGNATURE_CAPTION="Генеральный директор Кузин А. С.",
+        STAMP_TEMPLATES_FILE="stamp_templates.yaml",
+    )
+    out = stamp_pdf(_two_page_pdf(), settings)
+
+    import pymupdf
+    doc = pymupdf.open(stream=out, filetype="pdf")
+    assert len(doc) == 2
+    assert "Кузин А. С." in doc[0].get_text()  # расшифровка на стр. 1
+    assert doc[0].get_images()  # печать/факсимиле на стр. 1
+    assert "Кузин А. С." not in doc[1].get_text()
+    assert not doc[1].get_images()  # последняя страница не тронута
