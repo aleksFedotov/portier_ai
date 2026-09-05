@@ -249,11 +249,11 @@ async def test_pipeline_kdv_invoice_owner_not_muted(monkeypatch, tmp_path):
 
 
 async def test_pipeline_google_security_alert_owner(monkeypatch, tmp_path):
-    """Оповещение безопасности Google — владельцу (тикет 21)."""
+    """Оповещение безопасности Google — login_code в группу счетов (решение владельца)."""
     _, bot, record, analyze = await _run_pipeline(
         monkeypatch, tmp_path,
         "Google <no-reply@accounts.google.com>", "Оповещение системы безопасности",
     )
-    assert record.email_type == "owner_notice"
+    assert record.email_type == "login_code"
     analyze.assert_not_awaited()
     bot.send_message.assert_called_once()
