@@ -10,7 +10,7 @@ import re
 from decimal import Decimal
 from pathlib import Path
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from .models import Agent
 
@@ -73,8 +73,28 @@ def apply_price_percent(amount_str: str | None, percent: Decimal | None) -> str 
     return format_money(adjusted)
 
 
+_SEED_FIELDS = (
+    "aliases", "invoice_on_booking", "payer_name", "invoice_email",
+    "price_note", "edit_note", "note",
+)
+
+
+def _agent_kwargs(item: dict) -> dict:
+    return dict(
+        name=item.get("name", ""),
+        aliases=item.get("aliases", ""),
+        invoice_on_booking=bool(item.get("invoice_on_booking", True)),
+        payer_name=item.get("payer_name", ""),
+        invoice_email=item.get("invoice_email", ""),
+        price_note=item.get("price_note", ""),
+        edit_note=item.get("edit_note", ""),
+        note=item.get("note", ""),
+    )
+
+
 async def seed_agents(session_factory, path: str = DEFAULT_SEED_FILE) -> int:
-    """Сид справочника из agents.yaml (только если таблица пуста). Возвращает число добавленных."""
+    """Синк справочника из agents.yaml: новые агенты добавляются, существующие
+    (по имени) обновляются. Возвращает число добавленных + обновлённых."""
     if not Path(path).exists():
         return 0
     import yaml
@@ -83,21 +103,26 @@ async def seed_agents(session_factory, path: str = DEFAULT_SEED_FILE) -> int:
         items = yaml.safe_load(fh) or []
 
     async with session_factory() as session:
-        count = await session.execute(select(func.count(Agent.id)))
-        if count.scalar_one() > 0:
-            logger.info("Справочник агентов не пуст, сид из %s пропущен", path)
-            return 0
+        existing = {
+            a.name: a
+            for a in (await session.execute(select(Agent))).scalars().all()
+        }
+        added = updated = 0
         for item in items:
-            session.add(Agent(
-                name=item.get("name", ""),
-                aliases=item.get("aliases", ""),
-                invoice_on_booking=bool(item.get("invoice_on_booking", True)),
-                payer_name=item.get("payer_name", ""),
-                invoice_email=item.get("invoice_email", ""),
-                price_note=item.get("price_note", ""),
-                edit_note=item.get("edit_note", ""),
-                note=item.get("note", ""),
-            ))
+            fields = _agent_kwargs(item)
+            agent = existing.get(fields["name"])
+            if agent is None:
+                session.add(Agent(**fields))
+                added += 1
+                continue
+            changed = False
+            for field in _SEED_FIELDS:
+                if getattr(agent, field) != fields[field]:
+                    setattr(agent, field, fields[field])
+                    changed = True
+            updated += changed
         await session.commit()
-    logger.info("Сид агентов из %s: добавлено %d", path, len(items))
-    return len(items)
+    logger.info(
+        "Синк агентов из %s: добавлено %d, обновлено %d", path, added, updated,
+    )
+    return added + updated

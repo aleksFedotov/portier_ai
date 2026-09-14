@@ -77,6 +77,36 @@ async def test_seed_agents_missing_file(session_factory):
     assert await seed_agents(session_factory, "нет_такого_файла.yaml") == 0
 
 
+async def test_seed_agents_updates_existing(session_factory, tmp_path):
+    """Повторный сид с изменённым yaml обновляет поля существующего агента,
+    агентов вне yaml не трогает."""
+    seed_file = tmp_path / "agents.yaml"
+    seed_file.write_text(yaml.safe_dump([
+        {"name": "Tvil", "aliases": "Tvil", "invoice_on_booking": False},
+    ], allow_unicode=True), encoding="utf-8")
+    assert await seed_agents(session_factory, str(seed_file)) == 1
+
+    async with session_factory() as session:
+        session.add(Agent(name="Ручной", aliases="Ручной", invoice_on_booking=False))
+        await session.commit()
+
+    seed_file.write_text(yaml.safe_dump([
+        {"name": "Tvil", "aliases": "Tvil;Tvil.ru", "invoice_on_booking": True,
+         "payer_name": "ООО «Твил»"},
+    ], allow_unicode=True), encoding="utf-8")
+    assert await seed_agents(session_factory, str(seed_file)) == 1
+
+    async with session_factory() as session:
+        by_name = {a.name: a for a in (await session.execute(select(Agent))).scalars().all()}
+    assert by_name["Tvil"].invoice_on_booking is True
+    assert by_name["Tvil"].payer_name == "ООО «Твил»"
+    assert by_name["Tvil"].aliases == "Tvil;Tvil.ru"
+    assert by_name["Ручной"].invoice_on_booking is False  # не из yaml — не тронут
+
+    # без изменений — 0
+    assert await seed_agents(session_factory, str(seed_file)) == 0
+
+
 # ---------- веб-панель ----------
 
 
