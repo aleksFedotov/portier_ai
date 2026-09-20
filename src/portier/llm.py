@@ -76,16 +76,21 @@ _JSON_MODE_SUFFIX = (
 
 
 def create_llm_client(settings) -> AsyncOpenAI:
-    """Создать клиента активного LLM-провайдера (настройка LLM_PROVIDER)."""
+    """Создать клиента активного LLM-провайдера (настройка LLM_PROVIDER).
+
+    timeout/max_retries заданы явно: одиночный сетевой лаг не должен валить
+    обработку письма (APITimeoutError «Request timed out.»).
+    """
     if settings.LLM_PROVIDER == "deepseek":
         if not settings.DEEPSEEK_API_KEY:
             raise ValueError("LLM_PROVIDER=deepseek, но DEEPSEEK_API_KEY не задан")
         return AsyncOpenAI(
-            api_key=settings.DEEPSEEK_API_KEY, base_url=settings.DEEPSEEK_BASE_URL
+            api_key=settings.DEEPSEEK_API_KEY, base_url=settings.DEEPSEEK_BASE_URL,
+            timeout=120.0, max_retries=2,
         )
     if not settings.OPENAI_API_KEY:
         raise ValueError("OPENAI_API_KEY не задан")
-    return AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+    return AsyncOpenAI(api_key=settings.OPENAI_API_KEY, timeout=120.0, max_retries=2)
 
 
 @retry(

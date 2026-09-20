@@ -16,6 +16,7 @@ import os
 import re
 from datetime import date, datetime, timedelta
 
+from openai import APIConnectionError, APITimeoutError, RateLimitError
 from sqlalchemy import func, select
 
 from .cleaner import clean_email
@@ -118,6 +119,22 @@ MAX_INVOICE_ACTION_ATTEMPTS = 10
 
 # Действия счёта, чьи попытки суммируются для лимита MAX_INVOICE_ACTION_ATTEMPTS.
 INVOICE_ACTION_TYPES = ("invoice_gmail_draft",)
+
+# Временные сбои LLM-провайдера: письмо остаётся PENDING и переобрабатывается
+# в следующих циклах опроса. Без этого таймаут OpenAI («Request timed out.»)
+# навсегда хоронил письмо: запись становилась ERROR, is_processed считал её
+# обработанной → check_once вешал метку portier-processed, счёт не выставлялся.
+RETRYABLE_LLM_ERRORS = (
+    APITimeoutError,
+    APIConnectionError,
+    RateLimitError,
+    asyncio.TimeoutError,
+)
+
+# Сколько циклов опроса повторяем вызов LLM при временном сбое, прежде чем
+# сдаться (ERROR + алерт админам). Внутри каждого цикла ещё 3 попытки
+# tenacity в analyze_email и max_retries самого SDK.
+MAX_LLM_ATTEMPTS = 10
 
 
 def _is_transient_gmail_error(exc: Exception) -> bool:
@@ -589,6 +606,30 @@ async def _run_action(session, email_id: int, action_type: str, fn) -> bool:
     return True
 
 
+async def _record_llm_attempt(session, email_id: int, exc: Exception) -> int:
+    """Зафиксировать неудачную попытку вызова LLM и вернуть их число.
+
+    SUCCESS-лог не пишем: успех виден по record.llm_result, а пропуск действия
+    по SUCCESS-логу (как в _run_action) здесь опасен — при падении процесса
+    между коммитами повтор обязан вызвать LLM заново.
+    """
+    log = (await session.execute(
+        select(ActionLog).where(
+            ActionLog.email_id == email_id,
+            ActionLog.action_type == "llm_analyze",
+        )
+    )).scalar_one_or_none()
+    if log is None:
+        log = ActionLog(email_id=email_id, action_type="llm_analyze")
+        session.add(log)
+    else:
+        log.attempts += 1
+    log.status = ActionLogStatus.FAILED.value
+    log.error_message = f"{type(exc).__name__}: {exc}"
+    await session.commit()
+    return log.attempts
+
+
 async def _notify_error(bot, chat_id: int, sender: str, subject: str, error: str) -> None:
     """Предупредить администраторов о письме, которое не удалось обработать."""
     from .bot import send_notification
@@ -805,6 +846,20 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
             try:
                 result, mapping = await analyze_body(settings, record.sender, record.subject, body_text)
             except Exception as exc:
+                # Временный сбой LLM (таймаут, сеть, rate limit): письмо
+                # остаётся PENDING — check_once опускает окно after: до самого
+                # старого PENDING, и письмо вернётся на повторную обработку.
+                # Сдаёмся (ERROR + ⚠️) после MAX_LLM_ATTEMPTS циклов.
+                if isinstance(exc, RETRYABLE_LLM_ERRORS):
+                    attempts = await _record_llm_attempt(session, record.id, exc)
+                    if attempts < MAX_LLM_ATTEMPTS:
+                        logger.warning(
+                            "LLM временно недоступна для письма %s (%s), "
+                            "попытка %d/%d — остаётся PENDING, повторим "
+                            "в следующем цикле",
+                            gmail_id, exc, attempts, MAX_LLM_ATTEMPTS,
+                        )
+                        return record.status  # PENDING
                 logger.exception("LLM не смогла обработать письмо %s", gmail_id)
                 record.status = EmailStatus.ERROR.value
                 record.error_log = f"{type(exc).__name__}: {exc}"
