@@ -248,6 +248,18 @@ async def test_pipeline_kdv_invoice_owner_not_muted(monkeypatch, tmp_path):
     bot.send_message.assert_called_once()
 
 
+async def test_pipeline_kdv_support_invoice_owner(monkeypatch, tmp_path):
+    """Счёт KDV с адреса поддержки — тоже владельцу (поставщик, мы ему
+    счета не выставляем): без LLM и без invoice_required."""
+    _, bot, record, analyze = await _run_pipeline(
+        monkeypatch, tmp_path,
+        "KDV Online <support@kdvonline.ru>", "Счёт на оплату заказа #RB2109028B",
+    )
+    assert record.email_type == "owner_notice"
+    analyze.assert_not_awaited()
+    bot.send_message.assert_called_once()
+
+
 async def test_pipeline_google_security_alert_owner(monkeypatch, tmp_path):
     """Оповещение безопасности Google — login_code в группу счетов (решение владельца)."""
     _, bot, record, analyze = await _run_pipeline(
