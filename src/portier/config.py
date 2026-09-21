@@ -341,11 +341,11 @@ class Settings(BaseSettings):
         # Суточно.ру: пополнения баланса и брошенные бронирования
         "info@sutochno.ru|на ваш баланс поступили средства",
         "info@sutochno.ru|не завершили бронирование",
-        # закупки отеля: подтверждения заказов/доставки (счёт KDV с любого
-        # адреса домена — владельцу, перехватывается OWNER_NOTICE_RULES
-        # раньше глушения)
+        # закупки отеля: KDV глушим целиком (поставщик, живой переписки нет);
+        # счета с любого адреса домена — владельцу, перехватываются
+        # OWNER_NOTICE_RULES раньше глушения
         "dobry.market@multonpartners.com",
-        "info@kdvonline.ru",
+        "@kdvonline.ru",
         # Google: условия использования и советы Developers
         "google-noreply@google.com",
         "googledevelopers-noreply@google.com",

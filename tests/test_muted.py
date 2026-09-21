@@ -186,6 +186,8 @@ def test_ticket21_muted_rules():
     assert is_muted("Суточно.ру <info@sutochno.ru>", "🔑 Тук-тук! Кажется, вы не завершили бронирование", rules)
     assert is_muted("Dobry.market@multonpartners.com", "Мы получили ваш заказ № 1", rules)
     assert is_muted("KDV Online <info@kdvonline.ru>", "Заказ #RB1308240B передан на доставку", rules)
+    # домен глушим целиком: вопросы по оплате/заказам с support@ — не гостевые сообщения
+    assert is_muted("KDV Online <support@kdvonline.ru>", "Оплата по заказу #RB2109028B", rules)
     assert is_muted("Google <google-noreply@google.com>", "Мы обновляем Условия использования", rules)
     assert is_muted("Google Developers <googledevelopers-noreply@google.com>", "[Action Advised] Manage your unused OAuth clients", rules)
     assert is_muted("Mail Delivery Subsystem <mailer-daemon@googlemail.com>", "Delivery Status Notification (Failure)", rules)
@@ -258,6 +260,17 @@ async def test_pipeline_kdv_support_invoice_owner(monkeypatch, tmp_path):
     assert record.email_type == "owner_notice"
     analyze.assert_not_awaited()
     bot.send_message.assert_called_once()
+
+
+async def test_pipeline_kdv_support_payment_question_muted(monkeypatch, tmp_path):
+    """Вопрос KDV об оплате с support@ — не гостевое сообщение: глушим."""
+    _, bot, record, analyze = await _run_pipeline(
+        monkeypatch, tmp_path,
+        "KDV Online <support@kdvonline.ru>", "Оплата по заказу #RB2109028B",
+    )
+    assert record.status == EmailStatus.SKIPPED.value
+    analyze.assert_not_awaited()
+    bot.send_message.assert_not_called()
 
 
 async def test_pipeline_google_security_alert_owner(monkeypatch, tmp_path):
