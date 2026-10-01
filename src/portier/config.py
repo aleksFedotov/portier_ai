@@ -135,6 +135,8 @@ class Settings(BaseSettings):
         "agent@bronevik.com",
         "anastasiya.ryabinkina@pegast.ru",
         "e.morozova@hbpro.expert",
+        # Тот же отправитель (HotelBook Pro), новый домен
+        "e.morozova@hotelbook.pro",
         "buh7@anextour.com",
         "buh@trivio.ru",
         "sverka@tutu.ru",
