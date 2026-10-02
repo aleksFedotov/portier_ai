@@ -164,6 +164,19 @@ async def test_pipeline_admin_attention(monkeypatch, tmp_path):
     bot.send_message.assert_called_once()
 
 
+async def test_pipeline_onetwotrip_stay_confirmation(monkeypatch, tmp_path):
+    """OneTwoTrip «Подтвердите проживание» — запрос подтверждения факта
+    проживания, а не новая бронь: в основную группу, без LLM."""
+    _, bot, record, analyze = await _run_pipeline(
+        monkeypatch, tmp_path,
+        "OneTwoTrip <noreply@onetwotrip.com>",
+        "Подтвердите проживание 66532.5.84: LANA ALANIYA в Liki Loft Hotel (Санкт-Петербург)",
+    )
+    assert record.email_type == "admin_attention"
+    analyze.assert_not_awaited()
+    bot.send_message.assert_called_once()
+
+
 async def test_pipeline_travelline_digest_muted(monkeypatch, tmp_path):
     """Ежедневный дайджест «Уведомление о бронированиях» глушится (тикет 19)."""
     _, _, record, analyze = await _run_pipeline(
