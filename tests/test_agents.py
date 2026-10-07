@@ -243,6 +243,57 @@ async def test_zabroniryi_booking_becomes_invoice(monkeypatch, tmp_path):
     assert "-18% ко всем дням" in text
 
 
+async def test_roomlink_alias_booking_becomes_invoice(monkeypatch, tmp_path):
+    """Регрессия: подтверждение, где канал указан только как «Roomlink»
+    (без «Zabroniryi» в теме и channel_name), тоже матчится на «Забронируй.ру»
+    и даёт счёт, а не молчаливый booking_confirmed."""
+    init_engine("sqlite+aiosqlite:///:memory:")
+    await init_db()
+    async with get_session_factory()() as session:
+        session.add(_agent(
+            name="Забронируй.ру",
+            aliases="Забронируй;Zabroniryi;Zabroniryi.ru;Roomlink;Roomlink.ru",
+            payer_name="ООО «Эй энд Эй»", invoice_email="zakaz02@roomlink.ru",
+            price_note="-18% ко всем дням",
+        ))
+        await session.commit()
+
+    analyze = AsyncMock(return_value=EmailAnalysisResult(
+        type="booking_confirmed", priority="normal",
+        booking_number="18496234", channel_name="Roomlink",
+        arrival_date="2026-10-19", departure_date="2026-10-30",
+        action_required="—",
+        invoice=InvoiceDetails(amount="43 000,00", description="Улучшенный стандарт, 1 взрослый"),
+    ))
+    monkeypatch.setattr(gmail_client, "analyze_email", analyze)
+    gmail = SimpleNamespace(
+        fetch_headers=AsyncMock(return_value={
+            "message_id": "<msg-1@x>",
+            "sender": "TravelLine <noreply@travellinemail.com>",
+            "subject": "Подтверждение бронирования №18496234. Roomlink",
+            "date": "Wed, 7 Oct 2026 11:38:00 +0300",
+            "internal_date": 1791360000000,
+        }),
+        fetch_body_text=AsyncMock(return_value="Подтверждение бронирования."),
+        fetch_attachments=AsyncMock(return_value=[]),
+        create_draft=AsyncMock(return_value="draft-1"),
+    )
+    bot = AsyncMock()
+    settings = Settings(
+        OPENAI_API_KEY="k", TELEGRAM_CHAT_ID=111,
+        OWNER_CHAT_ID=999,
+        DATABASE_URL="sqlite+aiosqlite:///:memory:",
+        INVOICES_DIR=str(tmp_path),
+    )
+    await gmail_client.process_email(gmail, bot, settings, "gmail-id-1")
+
+    async with get_session_factory()() as session:
+        record = (await session.execute(select(ProcessedEmail))).scalars().one()
+    assert record.status == EmailStatus.SUCCESS.value
+    assert record.email_type == "invoice_required"
+    assert record.llm_result["invoice"]["company_name"] == "ООО «Эй энд Эй»"
+
+
 async def test_agent_without_invoice_stays_silent(monkeypatch, tmp_path):
     """Агент с invoice_on_booking=false: бронь молча в БД, счёт не выставляем."""
     init_engine("sqlite+aiosqlite:///:memory:")

@@ -114,7 +114,7 @@
   edit_note: "Счёт без изменения цены на hotel22@susanin.ru в день бронирования. В комментарии к брони: «счёт выставлен» + дата."
 
 - name: Забронируй.ру
-  aliases: "Забронируй;Zabroniryi;Zabroniryi.ru"
+  aliases: "Забронируй;Zabroniryi;Zabroniryi.ru;Roomlink;Roomlink.ru"
   invoice_on_booking: true
   payer_name: ООО «Эй энд Эй»
   invoice_email: zakaz02@roomlink.ru
