@@ -112,3 +112,21 @@ async def test_seed_from_yaml(session_factory, tmp_path):
 
 async def test_seed_missing_file(session_factory):
     assert await seed_companies(session_factory, "нет_такого_файла.yaml") == 0
+
+
+async def test_seed_adds_missing_companies_without_overwriting(session_factory, tmp_path):
+    from sqlalchemy import select
+
+    async with session_factory() as session:
+        session.add(Company(name="Existing", inn="manual"))
+        await session.commit()
+    path = tmp_path / "companies.yaml"
+    path.write_text(yaml.safe_dump([
+        {"name": "Existing", "inn": "seed"},
+        {"name": "New", "inn": "123"},
+    ]), encoding="utf-8")
+    assert await seed_companies(session_factory, str(path)) == 1
+    assert await seed_companies(session_factory, str(path)) == 0
+    async with session_factory() as session:
+        companies = (await session.execute(select(Company))).scalars().all()
+    assert {c.name: c.inn for c in companies} == {"Existing": "manual", "New": "123"}

@@ -9,7 +9,7 @@ from pathlib import Path
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from .models import Agent, Company
 
@@ -193,7 +193,7 @@ def create_app(session_factory) -> FastAPI:
 
 
 async def seed_companies(session_factory, path: str = DEFAULT_SEED_FILE) -> int:
-    """Сид реестра из companies.yaml (только если таблица пуста). Возвращает число добавленных."""
+    """Добавить отсутствующие компании из YAML, сохраняя ручные настройки."""
     if not Path(path).exists():
         return 0
     import yaml
@@ -202,13 +202,14 @@ async def seed_companies(session_factory, path: str = DEFAULT_SEED_FILE) -> int:
         items = yaml.safe_load(fh) or []
 
     async with session_factory() as session:
-        count = await session.execute(select(func.count(Company.id)))
-        if count.scalar_one() > 0:
-            logger.info("Реестр компаний не пуст, сид из %s пропущен", path)
-            return 0
+        names = set((await session.execute(select(Company.name))).scalars().all())
+        added = 0
         for item in items:
+            name = item.get("name", "")
+            if name in names:
+                continue
             session.add(Company(
-                name=item.get("name", ""),
+                name=name,
                 inn=item.get("inn", ""),
                 kpp=item.get("kpp", ""),
                 legal_address=item.get("legal_address", ""),
@@ -216,6 +217,8 @@ async def seed_companies(session_factory, path: str = DEFAULT_SEED_FILE) -> int:
                 email=item.get("email", ""),
                 subject_template=item.get("subject_template", ""),
             ))
+            names.add(name)
+            added += 1
         await session.commit()
-    logger.info("Сид компаний из %s: добавлено %d", path, len(items))
-    return len(items)
+    logger.info("Сид компаний из %s: добавлено %d", path, added)
+    return added
