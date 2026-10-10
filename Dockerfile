@@ -8,6 +8,7 @@ WORKDIR /app
 
 COPY pyproject.toml ./
 COPY src ./src
+COPY agents.yaml companies.yaml stamp_templates.yaml ./
 
 RUN pip install --no-cache-dir .
 

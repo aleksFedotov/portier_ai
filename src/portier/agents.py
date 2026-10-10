@@ -96,6 +96,7 @@ async def seed_agents(session_factory, path: str = DEFAULT_SEED_FILE) -> int:
     """Синк справочника из agents.yaml: новые агенты добавляются, существующие
     (по имени) обновляются. Возвращает число добавленных + обновлённых."""
     if not Path(path).exists():
+        logger.warning("Справочник агентов %s не найден: синхронизация пропущена", path)
         return 0
     import yaml
 
