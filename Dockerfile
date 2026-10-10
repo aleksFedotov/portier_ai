@@ -11,6 +11,7 @@ COPY src ./src
 COPY agents.yaml companies.yaml stamp_templates.yaml ./
 
 RUN pip install --no-cache-dir .
+RUN python -c "import yaml; [yaml.safe_load(open(p, encoding='utf-8')) for p in ('agents.yaml', 'companies.yaml', 'stamp_templates.yaml')]"
 
 # Прогрев natasha при сборке: проверяем, что NamesExtractor готов,
 # чтобы контейнер не делал этого при каждом старте

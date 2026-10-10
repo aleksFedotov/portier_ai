@@ -1,6 +1,7 @@
 """Тикет 13: справочник агентов — матчинг, сид, веб-панель, конвейер счетов."""
 
 from types import SimpleNamespace
+from pathlib import Path
 from unittest.mock import AsyncMock
 
 import pytest
@@ -16,6 +17,19 @@ from portier.db import get_session_factory, init_db, init_engine
 from portier.models import Agent, Base, EmailStatus, ProcessedEmail
 from portier.schemas import EmailAnalysisResult, InvoiceDetails
 from portier.web import create_app
+
+
+async def test_repository_agent_catalog_loads_and_enables_roomlink(session_factory):
+    path = Path(__file__).resolve().parents[1] / "agents.yaml"
+    assert await seed_agents(session_factory, str(path)) > 0
+    async with session_factory() as session:
+        agents = (await session.execute(select(Agent))).scalars().all()
+    agent = match_agent_in_list(
+        agents, "Подтверждение бронирования №18558404. Roomlink (Zabroniryi.ru)", None
+    )
+    assert agent is not None
+    assert agent.invoice_on_booking is True
+    assert agent.payer_name == "ООО «Эй энд Эй»"
 
 
 def _agent(**kw) -> Agent:
