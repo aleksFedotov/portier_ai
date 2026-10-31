@@ -11,6 +11,8 @@ import logging
 import re
 from dataclasses import dataclass, field
 
+from aiogram.types import CopyTextButton, InlineKeyboardButton, InlineKeyboardMarkup
+
 logger = logging.getLogger(__name__)
 
 YANDEX_SENDER = "hotels@travel.yandex.ru"
@@ -101,6 +103,20 @@ def _fmt_money(value: float) -> str:
     if value == int(value):
         return f"{int(value):,}".replace(",", " ") + " ₽"
     return f"{value:,.2f}".replace(",", " ").replace(".", ",") + " ₽"
+
+
+def build_registry_buttons(report: RegistryReport) -> InlineKeyboardMarkup:
+    """Кнопки копирования номеров броней и суммы без пробелов и валюты."""
+    rows = [
+        [InlineKeyboardButton(text=f"📋 {b.number}", copy_text=CopyTextButton(text=b.number))]
+        for b in report.bookings
+    ]
+    amount = _fmt_money(report.total).removesuffix(" ₽").replace(" ", "")
+    rows.append([InlineKeyboardButton(
+        text=f"📋 Сумма: {_fmt_money(report.total)}",
+        copy_text=CopyTextButton(text=amount),
+    )])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def build_registry_notification(report: RegistryReport) -> str:
