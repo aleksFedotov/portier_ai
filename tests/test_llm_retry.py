@@ -1,17 +1,19 @@
 """Ретрай временных ошибок LLM: письмо остаётся PENDING и переобрабатывается,
 ERROR + ⚠️ — только после исчерпания попыток или при логической ошибке."""
 
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import httpx
 import pytest
-from openai import APITimeoutError
+from openai import APITimeoutError, InternalServerError
 from sqlalchemy import select
 
 import portier.gmail_client as gc
 from portier.db import get_session_factory, init_db, init_engine
 from portier.models import ActionLog, ProcessedEmail
+from portier.schemas import EmailAnalysisResult
 
 
 @pytest.fixture
@@ -112,3 +114,57 @@ async def test_llm_logic_error_fails_immediately(_db, monkeypatch):
     assert (await _record()).status == "ERROR"
     assert await _llm_attempts() == 0
     notify.assert_awaited_once()
+
+
+@pytest.mark.parametrize("recovers", [False, True])
+async def test_503_is_deferred_and_retried_after_delay(_db, monkeypatch, recovers):
+    error = InternalServerError(
+        "Service is too busy",
+        response=httpx.Response(503, request=httpx.Request("POST", "https://api.deepseek.com")),
+        body=None,
+    )
+    analyze = AsyncMock(side_effect=error)
+    monkeypatch.setattr(gc, "analyze_body", analyze)
+    monkeypatch.setattr(gc, "MAX_LLM_ATTEMPTS", 2)
+    notify = AsyncMock()
+    monkeypatch.setattr(gc, "_notify_error", notify)
+
+    assert await gc.process_email(_gmail(), None, _settings(), "g-1") == "PENDING"
+    # A fresh session simulates a new poll / process restart: the delay persists.
+    assert await gc.process_email(_gmail(), None, _settings(), "g-1") == "PENDING"
+    assert analyze.await_count == 1
+    assert await _llm_attempts() == 1
+    notify.assert_not_awaited()
+
+    async with get_session_factory()() as session:
+        log = (await session.execute(select(ActionLog))).scalar_one()
+        log.updated_at = datetime.utcnow() - timedelta(minutes=2)
+        await session.commit()
+    if recovers:
+        analyze.side_effect = None
+        analyze.return_value = (
+            EmailAnalysisResult(type="unknown", priority="normal", action_required=""), {},
+        )
+    expected = "SUCCESS" if recovers else "ERROR"
+    assert await gc.process_email(_gmail(), None, _settings(), "g-1") == expected
+    assert analyze.await_count == 2
+    if recovers:
+        notify.assert_not_awaited()
+    else:
+        notify.assert_awaited_once()
+
+
+@pytest.mark.parametrize("attempts,seconds", [(1, 60), (2, 120), (3, 240), (7, 3600), (10, 3600)])
+def test_503_delay_grows_and_is_capped(attempts, seconds):
+    assert gc._llm_503_delay(attempts) == timedelta(seconds=seconds)
+
+
+async def test_other_server_error_is_not_deferred(_db, monkeypatch):
+    error = InternalServerError(
+        "Server error",
+        response=httpx.Response(500, request=httpx.Request("POST", "https://api.deepseek.com")),
+        body=None,
+    )
+    monkeypatch.setattr(gc, "analyze_body", AsyncMock(side_effect=error))
+    monkeypatch.setattr(gc, "_notify_error", AsyncMock())
+    assert await gc.process_email(_gmail(), None, _settings(), "g-1") == "ERROR"

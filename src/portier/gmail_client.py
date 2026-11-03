@@ -16,7 +16,7 @@ import os
 import re
 from datetime import date, datetime, timedelta
 
-from openai import APIConnectionError, APITimeoutError, RateLimitError
+from openai import APIConnectionError, APIStatusError, APITimeoutError, RateLimitError
 from sqlalchemy import func, select
 
 from .cleaner import clean_email
@@ -606,6 +606,29 @@ async def _run_action(session, email_id: int, action_type: str, fn) -> bool:
     return True
 
 
+def _is_llm_overloaded(exc: Exception) -> bool:
+    return isinstance(exc, APIStatusError) and exc.status_code == 503
+
+
+def _llm_503_delay(attempts: int) -> timedelta:
+    return timedelta(seconds=min(60 * 2 ** min(max(attempts - 1, 0), 6), 3600))
+
+
+async def _llm_retry_pending(session, email_id: int) -> bool:
+    """Use the persisted failure timestamp so restarts do not reset the delay."""
+    log = (await session.execute(
+        select(ActionLog).where(
+            ActionLog.email_id == email_id,
+            ActionLog.action_type == "llm_analyze",
+        )
+    )).scalar_one_or_none()
+    return bool(
+        log is not None
+        and (log.error_message or "").startswith("HTTP 503: ")
+        and log.updated_at + _llm_503_delay(log.attempts) > datetime.utcnow()
+    )
+
+
 async def _record_llm_attempt(session, email_id: int, exc: Exception) -> int:
     """Зафиксировать неудачную попытку вызова LLM и вернуть их число.
 
@@ -625,7 +648,9 @@ async def _record_llm_attempt(session, email_id: int, exc: Exception) -> int:
     else:
         log.attempts += 1
     log.status = ActionLogStatus.FAILED.value
-    log.error_message = f"{type(exc).__name__}: {exc}"
+    prefix = "HTTP 503: " if _is_llm_overloaded(exc) else ""
+    log.error_message = f"{prefix}{type(exc).__name__}: {exc}"
+    log.updated_at = datetime.utcnow()
     await session.commit()
     return log.attempts
 
@@ -702,6 +727,12 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
         if await is_processed(session, message_id):
             logger.info("Письмо %s уже обработано, пропуск", gmail_id)
             return ALREADY_PROCESSED
+
+        existing_id = (await session.execute(
+            select(ProcessedEmail.id).where(ProcessedEmail.message_id == message_id)
+        )).scalar_one_or_none()
+        if existing_id is not None and await _llm_retry_pending(session, existing_id):
+            return EmailStatus.PENDING.value
 
         body_text = await gmail.fetch_body_text(gmail_id)
 
@@ -850,9 +881,16 @@ async def process_email(gmail: GmailClient, bot, settings: Settings, gmail_id: s
                 # остаётся PENDING — check_once опускает окно after: до самого
                 # старого PENDING, и письмо вернётся на повторную обработку.
                 # Сдаёмся (ERROR + ⚠️) после MAX_LLM_ATTEMPTS циклов.
-                if isinstance(exc, RETRYABLE_LLM_ERRORS):
+                if isinstance(exc, RETRYABLE_LLM_ERRORS) or _is_llm_overloaded(exc):
                     attempts = await _record_llm_attempt(session, record.id, exc)
                     if attempts < MAX_LLM_ATTEMPTS:
+                        if _is_llm_overloaded(exc):
+                            logger.warning(
+                                "LLM HTTP 503 for %s, attempt %d/%d; retry after %s",
+                                gmail_id, attempts, MAX_LLM_ATTEMPTS,
+                                _llm_503_delay(attempts),
+                            )
+                            return record.status
                         logger.warning(
                             "LLM временно недоступна для письма %s (%s), "
                             "попытка %d/%d — остаётся PENDING, повторим "
