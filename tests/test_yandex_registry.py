@@ -86,7 +86,17 @@ def test_notification_text():
     report = parse_registry(data, payment_order="25732", payment_date="22.06.2026")
     text = build_registry_notification(report)
     assert "ПП №25732 от 22.06.2026" in text
-    assert "YA-1" in text
+    assert "<code>YA-1</code>" in text
     assert "Иванов &amp; Ко" in text  # HTML-экранирование
     assert "8 500 ₽" in text
     assert "Вознаграждение Яндекса: 1 500 ₽" in text
+    assert "<b>Перечислено отелю:</b> <code>8500</code> ₽" in text
+
+
+@pytest.mark.parametrize(("amount", "expected"), [(26800, "26800"), (26800.50, "26800,50")])
+def test_notification_copyable_values(amount, expected):
+    data = _make_xlsx([("YA-1<&>", "Гость <Иванов>", amount, 0)])
+    text = build_registry_notification(parse_registry(data))
+    assert "<code>YA-1&lt;&amp;&gt;</code>" in text
+    assert "Гость &lt;Иванов&gt;" in text
+    assert f"<b>Перечислено отелю:</b> <code>{expected}</code> ₽" in text

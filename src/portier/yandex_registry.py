@@ -11,8 +11,6 @@ import logging
 import re
 from dataclasses import dataclass, field
 
-from aiogram.types import CopyTextButton, InlineKeyboardButton, InlineKeyboardMarkup
-
 logger = logging.getLogger(__name__)
 
 YANDEX_SENDER = "hotels@travel.yandex.ru"
@@ -105,20 +103,6 @@ def _fmt_money(value: float) -> str:
     return f"{value:,.2f}".replace(",", " ").replace(".", ",") + " ₽"
 
 
-def build_registry_buttons(report: RegistryReport) -> InlineKeyboardMarkup:
-    """Кнопки копирования номеров броней и суммы без пробелов и валюты."""
-    rows = [
-        [InlineKeyboardButton(text=f"📋 {b.number}", copy_text=CopyTextButton(text=b.number))]
-        for b in report.bookings
-    ]
-    amount = _fmt_money(report.total).removesuffix(" ₽").replace(" ", "")
-    rows.append([InlineKeyboardButton(
-        text=f"📋 Сумма: {_fmt_money(report.total)}",
-        copy_text=CopyTextButton(text=amount),
-    )])
-    return InlineKeyboardMarkup(inline_keyboard=rows)
-
-
 def build_registry_notification(report: RegistryReport) -> str:
     """Текст карточки для Telegram (HTML)."""
     from .handlers.templates import esc
@@ -127,9 +111,10 @@ def build_registry_notification(report: RegistryReport) -> str:
     lines = [head, ""]
     for b in report.bookings:
         guest = f" — {esc(b.guest)}" if b.guest else ""
-        lines.append(f"🛎 {esc(b.number)}{guest}: {_fmt_money(b.amount)}")
+        lines.append(f"🛎 <code>{esc(b.number)}</code>{guest}: {_fmt_money(b.amount)}")
     lines.append("")
     if report.commission:
         lines.append(f"💸 Вознаграждение Яндекса: {_fmt_money(report.commission)}")
-    lines.append(f"💰 <b>Перечислено отелю: {_fmt_money(report.total)}</b>")
+    amount = _fmt_money(report.total).removesuffix(" ₽").replace(" ", "")
+    lines.append(f"💰 <b>Перечислено отелю:</b> <code>{amount}</code> ₽")
     return "\n".join(lines)

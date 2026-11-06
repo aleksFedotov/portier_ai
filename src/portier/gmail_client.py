@@ -1189,7 +1189,6 @@ async def _process_yandex_registry(
     Пустой реестр (нет броней) — молча помечаем SUCCESS, уведомление не шлём.
     """
     from .yandex_registry import (
-        build_registry_buttons,
         build_registry_notification,
         parse_payment_order,
         parse_registry,
@@ -1234,7 +1233,6 @@ async def _process_yandex_registry(
         session, record.id, "yandex_registry_notice",
         lambda: send_notification(
             bot, _owner_chat(settings), build_registry_notification(report),
-            buttons=build_registry_buttons(report),
         ),
     )
     record.status = EmailStatus.SUCCESS.value
